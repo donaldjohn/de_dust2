@@ -478,19 +478,23 @@ export class Game {
     // (player.update 要读 mouseDX/DY, 必须先读再清)
 
     // 1) 玩家控制 (需要 pointer lock 才能控制相机, 但移动键在未锁定时也可以响应)
+    // 武器开火: 把 input.primaryAttack/secondaryAttack 接到 weapons
+    if (this.input.primaryAttack) this.weapons.startFire();
+    else this.weapons.stopFire();
+    this.weapons.setAiming(!!this.input.secondaryAttack);
+
     if (this.input.pointerLocked) {
       if (this.player.state.alive) {
         this.handleBuyMenuHotkey();
         this.player.update(dt, this.input, this.map.colliders);
+        this.clampPlayerToMap();
         this.weapons.update(dt, this.buildShootContext());
       }
-      // 死亡时: 不更新玩家, 但仍消费一次性按键
-      // 不 return, 让下文继续更新 Bot/Match/HUD
     } else {
-      // 未锁定: 仍然让玩家 WASD 移动 (但相机不能转, 鼠标无响应)
       if (this.player.state.alive) {
         this.handleBuyMenuHotkey();
         this.player.updateWithoutLook(dt, this.input, this.map.colliders);
+        this.clampPlayerToMap();
         this.weapons.update(dt, this.buildShootContext());
       }
       this.input.consumeKey('Click');
