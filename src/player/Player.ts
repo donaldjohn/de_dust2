@@ -294,6 +294,10 @@ export class PlayerController {
       this.isGrounded = true;
     }
 
+    // 贴墙跳 (vault / mantle): 玩家跳跃时贴近矮平台侧面, 自动把玩家托到平台顶面
+    // 这是 CS 风格的"贴墙跳上 1m 平台", 否则玩家会被推回原位
+    this.tryVaultUp(colliders);
+
     // ---- 6) 一次性按键 (R / B / E / G / 数字切枪 / 滚轮) ----
     this.handleOneShots(input, dt);
 
@@ -375,6 +379,47 @@ export class PlayerController {
   }
 
   /** 同步 camera 位置 + 旋转 */
+  /**
+   * 贴墙跳 (vault/mantle): 玩家在跳跃上升中, 紧贴某"矮" collider (高 0.3-3m) 的侧面,
+   * 就把玩家 y 推到该 collider 的顶面 + 取消上升速度, 玩家自然落到平台顶.
+   * 适用场景: 跳上 B 平台/A 平台/箱子 等.
+   */
+  private tryVaultUp(colliders: AABB[]): void {
+    // 玩家在跳跃上升中 (vy > 0) 才生效
+    if (this.velocity.y <= 0) return;
+    // 玩家脚下必须在 y < 0.5 (刚起跳 / 在地上)
+    if (this.position.y > 0.5) return;
+    const r = this.radius;
+    for (const c of colliders) {
+      const h = c.max[1] - c.min[1];
+      // 只对"矮"平台生效 (0.3 - 3m), 太高的墙不是 vault
+      if (h < 0.3 || h > 3) continue;
+      // 平台底必须在玩家脚下附近 (y < 0.3), 顶面在头顶之上 (y < h)
+      if (c.min[1] > 0.4) continue;
+      if (c.max[1] < this.position.y) continue;
+      // 计算玩家到 collider XZ 距离 (圆心距矩形的最近距离)
+      const cx = Math.max(c.min[0], Math.min(this.position.x, c.max[0]));
+      const cz = Math.max(c.min[2], Math.min(this.position.z, c.max[2]));
+      const dx = this.position.x - cx;
+      const dz = this.position.z - cz;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      // 玩家在平台正上方 (dist=0), 已在平台上
+      if (dist < 0.001) {
+        this.position.y = c.max[1];
+        this.velocity.y = 0;
+        this.isGrounded = true;
+        return;
+      }
+      // 玩家紧贴平台侧面: 圆心距 < radius + 0.15 (允许一点点容差)
+      if (dist < r + 0.15) {
+        this.position.y = c.max[1];
+        this.velocity.y = 0;
+        this.isGrounded = true;
+        return;
+      }
+    }
+  }
+
   private syncCamera(): void {
     // camera 位置 = 脚底 + (0, HEAD_HEIGHT, 0)
     this.camera.position.set(

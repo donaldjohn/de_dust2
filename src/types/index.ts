@@ -155,7 +155,7 @@ export const CONFIG = {
   RESPAWN_DELAY: 3000,     // 死亡后毫秒
   MOVE_SPEED: 5.0,         // 单位/秒
   SPRINT_MULT: 1.4,
-  JUMP_VELOCITY: 6.0,
+  JUMP_VELOCITY: 7.2,   // 6.0 -> 7.2: 跳高 1.44m 能跳上 1m 平台
   GRAVITY: 18.0,
   PLAYER_HEIGHT: 1.7,
   PLAYER_RADIUS: 0.4,

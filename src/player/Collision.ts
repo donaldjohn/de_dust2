@@ -52,6 +52,24 @@ export class Collision {
           grounded = true;
         }
         velocity.y = 0;
+      } else if (dy > 0) {
+        // 跳跃上升中没碰到任何 Y 障碍, 但玩家可能"刚好够到"矮平台顶
+        // 检查 XZ 范围内所有矮 collider, 把 y 钉到 c.max[1] (vault 上平台)
+        for (const c of colliders) {
+          const h = c.max[1] - c.min[1];
+          if (h < 0.3 || h > 3) continue;
+          if (c.min[1] > 0.5) continue;
+          // XZ 必须有重叠
+          if (out.x + radius < c.min[0] || out.x - radius > c.max[0]) continue;
+          if (out.z + radius < c.min[2] || out.z - radius > c.max[2]) continue;
+          // 玩家头顶 (out.y + height) 已经穿过平台底 (c.max[1]) 但脚还没到平台顶
+          if (out.y + height >= c.max[1] && out.y <= c.max[1]) {
+            out.y = c.max[1];
+            grounded = true;
+            velocity.y = 0;
+            break;
+          }
+        }
       }
     }
 
@@ -95,6 +113,30 @@ export class Collision {
       if (!pushed) break;
     }
 
+    // 站在平台顶 (snap-on-top): 一帧重力下落可能让 y 跌破 c.max[1] (进 collider),
+    // 上面 5-pass 推回选 c.min[1] (collider 内最底) 错误地落到地面.
+    // 这里再扫一遍: 玩家 y 在某 collider 顶面附近, 直接把 y 钉到 c.max[1] (落在平台顶)
+    // 容差 0.3m (一帧重力 0.3m/s × dt=1 时约 0.3m, 留足空间)
+    if (!grounded) {
+      for (const c of colliders) {
+        const h = c.max[1] - c.min[1];
+        if (h < 0.2 || h > 5) continue;  // 只对合理高度的平台
+        if (c.min[1] > 0.5) continue;     // 平台底不能太高 (否则玩家不可能站上去)
+        if (out.y + height < c.min[1]) continue;  // 玩家脚底不够高
+        // XZ 必须有重叠 (玩家站在 collider 之上)
+        const xzOverlap = out.x + radius > c.min[0] && out.x - radius < c.max[0] &&
+                          out.z + radius > c.min[2] && out.z - radius < c.max[2];
+        if (!xzOverlap) continue;
+        // 玩家在平台上方 0.3m 内, 把 y 钉到 c.max[1]
+        if (out.y >= c.max[1] - 0.3 && out.y <= c.max[1] + 0.3) {
+          out.y = c.max[1];
+          grounded = true;
+          // 不清零 velocity.y, 让重力继续 (但下一帧又会触发这个 fix)
+          break;
+        }
+      }
+    }
+
     return { position: out, grounded };
   }
 
@@ -133,10 +175,23 @@ export class Collision {
       if (axis === 'y') {
         if (positive) {
           // 向上运动 -> 撞到顶面 (玩家头顶贴箱子底, 脚在 c.max[1] - height)
-          newVal = c.max[1] - height;
+          // 但: 矮平台 (高 0.3-3m) 应当 vault: 玩家从下方撞到平台底时, 直接站到平台顶
+          const h = c.max[1] - c.min[1];
+          if (h < 3 && c.min[1] <= 0.5) {
+            newVal = c.max[1];  // vault: 跳上平台, 站到 c.max[1]
+          } else {
+            newVal = c.max[1] - height;  // 真正撞天花板
+          }
         } else {
           // 向下运动 -> 撞到底面 (玩家脚贴箱子顶)
-          newVal = c.min[1];
+          // 但: 矮平台 (高 0.3-3m) 一律按 vault 推回 c.max[1] (玩家从上面下落, 站到平台顶)
+          // 这避免玩家在平台顶被重力一帧拉下后, 被错误推到 c.min[1] (地面)
+          const h = c.max[1] - c.min[1];
+          if (h < 3 && c.min[1] <= 0.5) {
+            newVal = c.max[1];
+          } else {
+            newVal = c.min[1];
+          }
         }
       } else if (axis === 'x') {
         newVal = positive ? c.min[0] - radius : c.max[0] + radius;
