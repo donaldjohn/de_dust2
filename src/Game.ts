@@ -482,20 +482,14 @@ export class Game {
       if (this.player.state.alive) {
         this.handleBuyMenuHotkey();
         this.player.update(dt, this.input, this.map.colliders);
-        // 武器系统
         this.weapons.update(dt, this.buildShootContext());
-      } else {
-        if (this.input.consumeKey('Click')) {
-          this.hud.showMessage('Waiting for next round...');
-        }
       }
+      // 死亡时: 不更新玩家, 但仍消费一次性按键
+      // 不 return, 让下文继续更新 Bot/Match/HUD
     } else {
       // 未锁定: 仍然让玩家 WASD 移动 (但相机不能转, 鼠标无响应)
-      // 这样在 pointer lock 偶尔失败时游戏仍可玩
       if (this.player.state.alive) {
         this.handleBuyMenuHotkey();
-        // 只用 XZ 速度, 不让 Player.update 改 yaw/pitch
-        // 玩家没有 pointer lock 时也不掉血/不重生
         this.player.updateWithoutLook(dt, this.input, this.map.colliders);
         this.weapons.update(dt, this.buildShootContext());
       }
@@ -526,7 +520,7 @@ export class Game {
       if (this.match.phase === RoundPhase.BuyTime) {
         this.buyMenu.toggle(this.player.state.money, this.player.state.team, this.player.state.weapons.map(w => w.stats.id));
         this.hud.setBuyMenuOpen(this.buyMenu.isOpen);
-        if (this.buyMenu.isOpen) this.exitPointerLock();
+        // 买枪菜单打开时保持 pointer lock, 用户可以 B 键关闭或直接点武器
       } else {
         this.hud.showMessage('Buy time is over');
       }
@@ -888,6 +882,8 @@ export class Game {
   }
 
   private handleBotShot(bot: Bot, origin: any, dir: any) {
+    // 队友不打玩家
+    if (bot.state.team === this.player.state.team) return;
     // 简化: 简单射线检查击中玩家
     const o = vec3ToArr(origin);
     const d = vec3ToArr(dir);

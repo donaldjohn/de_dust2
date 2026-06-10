@@ -69,7 +69,10 @@ function showPauseOverlay() {
 }
 
 document.addEventListener('pointerlockchange', () => {
-  if (document.pointerLockElement !== canvas && started) {
+  if (document.pointerLockElement === canvas) {
+    // 锁成功: 隐藏菜单 (包括 PAUSED overlay)
+    if (started) menu.style.display = 'none';
+  } else if (started) {
     showPauseOverlay();
   }
 });
