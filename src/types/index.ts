@@ -173,5 +173,13 @@ export const CONFIG = {
   LOSS_BONUS_BASE: 1400,
   LOSS_BONUS_INC: 500,     // 连败递增上限 4 次
   LOSS_BONUS_MAX: 3400,
-  WIN_BONUS: 3250
+  WIN_BONUS: 3250,
+
+  // ---- 上帝模式 (赵总要求) ----
+  // 玩家无敌: 9999 血 + 9999 甲, 几乎不可能死
+  GOD_HEALTH: 9999,
+  GOD_ARMOR: 9999,
+  // 每次重生 (respawnLocalPlayer) 把弹匣装满, 备弹 100000 发
+  GOD_MAG_AMMO: 100000,
+  GOD_RESERVE_AMMO: 100000
 } as const;

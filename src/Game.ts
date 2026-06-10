@@ -151,7 +151,7 @@ export class Game {
           this.player.setActiveWeaponIndex(w.length - 1);
         }
       } else {
-        this.hud.showMessage('Drop the bomb first (G)');
+        this.hud.showMessage('请先丢包 (按 G)');
       }
     };
     this.buyMenu.onClose = () => {
@@ -200,7 +200,7 @@ export class Game {
 
   private createPlayer() {
     // 玩家始终是 T 队伍 (与原 CS 一致, 也可提供阵营选择)
-    this.player = new PlayerController(this.camera, Team.T, 'You');
+    this.player = new PlayerController(this.camera, Team.T, '你');
     const weapons = this.makeDefaultWeapons(Team.T);
     this.player.setWeapons(weapons);
     // 默认装备手枪 (index 1), 刀是 index 0
@@ -237,7 +237,7 @@ export class Game {
       if (id === LOCAL_PLAYER_ID) continue;
       const isT = id.startsWith('bot-t');
       const team = isT ? Team.T : Team.CT;
-      const name = isT ? `Bot T${id.slice(-1)}` : `Bot CT${id.slice(-1)}`;
+      const name = isT ? `队友 T${id.slice(-1)}` : `敌人 CT${id.slice(-1)}`;
       const state: PlayerState = {
         id, name, team, alive: false, health: 100, armor: 100, helmet: true, money: 800,
         position: [0, 0, 0], rotation: 0, pitch: 0, weapons: this.makeDefaultWeapons(team),
@@ -397,9 +397,10 @@ export class Game {
       lastFireTime: 0, reloading: false, reloadStart: 0
     };
     const pistolId = team === Team.T ? WeaponId.Glock : WeaponId.USP;
+    // 上帝模式: 初始 100000 发 + 弹匣满
     const pistol: WeaponInstance = {
       stats: WEAPONS[pistolId], ammoInMag: WEAPONS[pistolId].magazineSize,
-      reserveAmmo: WEAPONS[pistolId].reserveAmmo,
+      reserveAmmo: CONFIG.GOD_RESERVE_AMMO,
       lastFireTime: 0, reloading: false, reloadStart: 0
     };
     return [knife, pistol];
@@ -435,7 +436,7 @@ export class Game {
     });
 
     bus.on('match_over', (p: { winner: Team; score: MatchScore }) => {
-      this.hud.showMessage(`${p.winner === Team.T ? 'TERRORISTS' : 'COUNTER-TERRORISTS'} WIN THE MATCH ${p.score.T}-${p.score.CT}`);
+      this.hud.showMessage(`${p.winner === Team.T ? '恐怖分子' : '反恐精英'} 赢得比赛! ${p.score.T} - ${p.score.CT}`);
     });
 
     bus.on('round_start', () => {
@@ -443,17 +444,17 @@ export class Game {
     });
 
     bus.on('bomb_planted', (p: { site: BombSite; planter: string }) => {
-      this.hud.showMessage('BOMB PLANTED', 2000);
+      this.hud.showMessage('炸弹已埋下', 2000);
       audio.playBombPlant();
     });
 
     bus.on('bomb_explode', () => {
-      this.hud.showMessage('BOOM!', 2000);
+      this.hud.showMessage('轰! 炸弹爆炸', 2000);
       audio.playBombExplode();
     });
 
     bus.on('bomb_defuse', () => {
-      this.hud.showMessage('BOMB DEFUSED', 2000);
+      this.hud.showMessage('炸弹已拆除', 2000);
       audio.playRoundEnd(true);
     });
 
@@ -484,7 +485,7 @@ export class Game {
         this.player.setActiveWeaponIndex(w.length - 1);
         audio.playBuy();
       } else {
-        this.hud.showMessage('Not enough money');
+        this.hud.showMessage('钱不够');
       }
     });
 
@@ -503,7 +504,7 @@ export class Game {
       if (p.id === LOCAL_PLAYER_ID) {
         // 不释放 pointer lock! 让玩家死亡后仍可自由浏览视角 (观战模式)
         // 弹一个半透明死亡提示, 玩家点击 RESPAWN 后再 respawn
-        this.hud.showMessage('You died — click to respawn', 999999);  // 长时间, 直到 click respawn
+        this.hud.showMessage('你已阵亡 — 点击屏幕复活 (自由观战中)', 999999);  // 长时间, 直到 click respawn
         this.hud.setPlayerDead(true);
         audio.playDeath();
       } else {
@@ -522,7 +523,7 @@ export class Game {
   }
 
   private getPlayerName(id: string): string {
-    if (id === LOCAL_PLAYER_ID) return 'You';
+    if (id === LOCAL_PLAYER_ID) return '你';
     return this.match.players.get(id)?.name ?? id;
   }
 
@@ -544,6 +545,10 @@ export class Game {
 
     // 复活到 T spawn
     this.player.respawn(sp.position, sp.facing);
+    // 上帝模式: 9999 血 + 9999 甲 (几乎不可能死)
+    this.player.state.health = CONFIG.GOD_HEALTH;
+    this.player.state.armor = CONFIG.GOD_ARMOR;
+    this.player.state.helmet = true;
     this.player.state.weapons = this.match.players.get(LOCAL_PLAYER_ID)!.weapons;
     this.player.setActiveWeaponIndex(this.player.state.weapons.length > 1 ? 1 : 0);
     this.weapons.init(this.player.state.weapons);
@@ -554,9 +559,19 @@ export class Game {
     // 复活时玩家重新有炸弹 (T 的本地玩家)
     this.localPlayerHasBomb = true;
 
+    // 子弹装满: 弹匣满 + 备弹 100000
+    for (const w of this.weapons.weapons) {
+      if (w.stats.id === WeaponId.Knife) continue;
+      w.ammoInMag = w.stats.magazineSize;
+      w.reserveAmmo = CONFIG.GOD_RESERVE_AMMO;
+      w.reloading = false;
+    }
+    // 同步 Match 状态 (Match 里的 weapons 引用是同一个, 不需要重新 set)
+
     // 同步 HUD
     this.hud.setPlayerDead(false);
-    this.hud.showMessage('Respawned', 1500);
+    this.hud.showMessage('已复活 — 9999 血, 10 万发子弹', 2000);
+    audio.playPickup();
   }
 
   private buildMatchInfo(): MatchInfo {
@@ -720,7 +735,7 @@ export class Game {
         this.hud.setBuyMenuOpen(this.buyMenu.isOpen);
         // 买枪菜单打开时保持 pointer lock, 用户可以 B 键关闭或直接点武器
       } else {
-        this.hud.showMessage('Buy time is over');
+        this.hud.showMessage('购买时间已过');
       }
     }
     // 数字键切武器
@@ -737,7 +752,7 @@ export class Game {
       if (dropped) {
         this.player.setWeapons(this.weapons.weapons);
         this.match.players.get(LOCAL_PLAYER_ID)!.weapons = this.weapons.weapons;
-        this.hud.showMessage('Weapon dropped');
+        this.hud.showMessage('已丢枪');
       }
     }
   }
@@ -882,7 +897,7 @@ export class Game {
     if (site !== BombSite.None && this.plantingPlayerId === null) {
       this.plantingPlayerId = LOCAL_PLAYER_ID;
       this.plantProgress = 0;
-      this.hud.showMessage('PLANTING...');
+      this.hud.showMessage('正在埋包...');
     }
   }
 

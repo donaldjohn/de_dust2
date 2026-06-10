@@ -117,9 +117,10 @@ export class PlayerController {
     this.isGrounded = false;
 
     this.state.alive = true;
-    this.state.health = 100;
-    this.state.armor = 100;
-    this.isDead = false;  // 复活, 退出上帝模式
+    // 上帝模式: 9999 血 + 9999 甲 (赵总要求)
+    this.state.health = CONFIG.GOD_HEALTH;
+    this.state.armor = CONFIG.GOD_ARMOR;
+    this.isDead = false;  // 复活, 退出 noclip
     this.state.helmet = true;
     this.state.position = [position[0], position[1], position[2]];
     this.state.rotation = facing;

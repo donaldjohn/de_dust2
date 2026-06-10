@@ -14,20 +14,20 @@ let started = false;
 function buildStartMenu() {
   menu.innerHTML = `
     <div class="main-menu">
-      <h1 class="title">DE_DUST2</h1>
-      <p class="subtitle">Three.js · Low-poly · 5v5</p>
-      <button id="play-btn" class="play-btn">▶ PLAY (T SIDE)</button>
+      <h1 class="title">荒漠迷城</h1>
+      <p class="subtitle">DE_DUST2 · Three.js · 低多边形 · 5v5</p>
+      <button id="play-btn" class="play-btn">▶ 开始游戏 (T 阵营)</button>
       <div class="controls">
-        <h3>CONTROLS</h3>
-        <p><b>WASD</b> Move · <b>Mouse</b> Look · <b>Click</b> Shoot</p>
-        <p><b>Right-click</b> Aim · <b>R</b> Reload · <b>B</b> Buy (buy time)</p>
-        <p><b>Space</b> Jump · <b>E</b> Plant/Defuse · <b>G</b> Drop weapon</p>
-        <p><b>1-5</b> Switch weapon · <b>Tab</b> Scoreboard</p>
-        <p><b>Esc</b> Release mouse</p>
-        <h3>OBJECTIVE</h3>
-        <p>As <span class="t-color">T</span>: plant the bomb at A or B site</p>
-        <p>As <span class="ct-color">CT</span>: prevent planting or defuse</p>
-        <p>First to 8 round wins wins the match</p>
+        <h3>操作说明</h3>
+        <p><b>WASD</b> 移动 · <b>鼠标</b> 视角 · <b>左键</b> 射击</p>
+        <p><b>右键</b> 瞄准 · <b>R</b> 换弹 · <b>B</b> 买枪 (买枪时间)</p>
+        <p><b>空格</b> 跳跃 · <b>E</b> 埋包/拆包 · <b>G</b> 丢枪</p>
+        <p><b>1-5</b> 切换武器 · <b>Tab</b> 计分板</p>
+        <p><b>Esc</b> 释放鼠标</p>
+        <h3>任务目标</h3>
+        <p>作为 <span class="t-color">T 阵营</span>: 在 A 点或 B 点埋下炸弹</p>
+        <p>作为 <span class="ct-color">CT 阵营</span>: 阻止埋包或拆掉炸弹</p>
+        <p>先赢 8 回合者获胜 (上帝模式: 9999 血, 10 万发子弹)</p>
       </div>
     </div>
   `;
@@ -57,9 +57,9 @@ function showPauseOverlay() {
     menu.style.display = 'flex';
     menu.innerHTML = `
       <div class="main-menu">
-        <h1 class="title">PAUSED</h1>
-        <p class="subtitle">Click PLAY to resume</p>
-        <button id="resume-btn" class="play-btn">▶ RESUME</button>
+        <h1 class="title">已暂停</h1>
+        <p class="subtitle">点击继续按钮恢复游戏</p>
+        <button id="resume-btn" class="play-btn">▶ 继续</button>
       </div>
     `;
     const btn = document.getElementById('resume-btn')!;

@@ -29,20 +29,20 @@ export interface MatchInfo {
 }
 
 const PHASE_LABEL: Record<RoundPhase, string> = {
-  [RoundPhase.Warmup]: 'WARMUP',
-  [RoundPhase.BuyTime]: 'BUY',
-  [RoundPhase.Live]: 'LIVE',
-  [RoundPhase.End]: 'END',
-  [RoundPhase.MatchOver]: 'MATCH OVER'
+  [RoundPhase.Warmup]: '热身',
+  [RoundPhase.BuyTime]: '购买',
+  [RoundPhase.Live]: '战斗中',
+  [RoundPhase.End]: '回合结束',
+  [RoundPhase.MatchOver]: '比赛结束'
 };
 
 // 把 weaponId 缩短成 kill feed 中显示的标签
 function weaponTag(id: WeaponId): string {
   switch (id) {
-    case WeaponId.Knife: return 'KNIFE';
-    case WeaponId.Glock: return 'GLOCK';
+    case WeaponId.Knife: return '刀';
+    case WeaponId.Glock: return '格洛克';
     case WeaponId.USP: return 'USP';
-    case WeaponId.DesertEagle: return 'DEAGLE';
+    case WeaponId.DesertEagle: return '沙鹰';
     case WeaponId.AK47: return 'AK-47';
     case WeaponId.M4A4: return 'M4A4';
     case WeaponId.AWP: return 'AWP';
@@ -52,11 +52,12 @@ function weaponTag(id: WeaponId): string {
 
 function reasonText(reason: string): string {
   switch (reason) {
-    case 'elimination':   return 'Eliminated';
-    case 'bomb_explode':  return 'Bomb Exploded';
-    case 'bomb_defuse':   return 'Bomb Defused';
-    case 'time_out':      return 'Target Saved';
-    case 'target_saved':  return 'Target Saved';
+    case 'elimination':   return '歼灭敌人';
+    case 'bomb_explode':  return '炸弹爆炸';
+    case 'bomb_defuse':   return '炸弹被拆';
+    case 'time_out':      return '目标保存';
+    case 'target_saved':  return '目标保存';
+    case 'MATCH OVER':    return '比赛结束';
     default:              return reason;
   }
 }
@@ -218,8 +219,8 @@ export class HUD {
     // 中央回合结果横幅
     this.elRoundBanner = mk('div', 'round-banner', this.root);
     this.elRoundBanner.innerHTML = `
-      <div class="title" data-rb-title>TERRORISTS WIN</div>
-      <div class="reason" data-rb-reason>Eliminated</div>
+      <div class="title" data-rb-title>恐怖分子胜利</div>
+      <div class="reason" data-rb-reason>歼灭</div>
     `;
     this.elRoundTitle  = this.elRoundBanner.querySelector('[data-rb-title]')!;
     this.elRoundReason = this.elRoundBanner.querySelector('[data-rb-reason]')!;
@@ -227,7 +228,7 @@ export class HUD {
     // 中央动作状态 + 进度条
     this.elActionStatus = mk('div', 'action-status', this.root);
     this.elActionStatus.innerHTML = `
-      <div class="label" data-act-label>PLANTING THE BOMB</div>
+      <div class="label" data-act-label>正在埋包</div>
       <div class="plant-progress" data-pbar><div data-pfill></div></div>
     `;
     this.elActionLabel = this.elActionStatus.querySelector('[data-act-label]')!;
@@ -320,16 +321,16 @@ export class HUD {
   private renderHealth() {
     const p = this.localPlayer!;
     // 安全 clamp: 防止任何异常导致显示巨大数字
-    const safeHealth = Math.max(0, Math.min(999, Math.round(p.health || 0)));
+    const safeHealth = Math.max(0, Math.min(999999, Math.round(p.health || 0)));
     this.elHp.textContent = String(safeHealth);
     this.elHp.className = 'hp' + (safeHealth <= 20 ? ' crit' : safeHealth <= 50 ? ' low' : '');
 
-    const safeArmor = Math.max(0, Math.min(999, Math.round(p.armor || 0)));
+    const safeArmor = Math.max(0, Math.min(999999, Math.round(p.armor || 0)));
     this.elArmor.textContent = String(safeArmor);
     this.elArmor.className = 'armor' + (safeArmor <= 0 ? ' zero' : '');
 
     this.elHelmet.className = 'helmet' + (p.helmet ? '' : ' none');
-    this.elHelmet.title = p.helmet ? 'Kevlar + Helmet' : 'No Helmet';
+    this.elHelmet.title = p.helmet ? '防弹衣 + 头盔' : '无头盔';
   }
 
   private renderAmmo() {
@@ -380,7 +381,7 @@ export class HUD {
     const m = this.match!;
     if (m.planting) {
       this.elActionStatus.classList.add('show');
-      this.elActionLabel.textContent = 'PLANTING THE BOMB';
+      this.elActionLabel.textContent = '正在埋包';
       this.elPlantBar.classList.remove('defuse');
       this.elPlantFill.style.width = (m.plantProgress * 100).toFixed(1) + '%';
     } else if (m.defusing) {
@@ -461,7 +462,7 @@ export class HUD {
     this.elRoundBanner.classList.remove('t', 'ct');
     this.elRoundBanner.classList.add(winner === Team.T ? 't' : 'ct');
     this.elRoundTitle.textContent =
-      winner === Team.T ? 'TERRORISTS WIN' : 'COUNTER-TERRORISTS WIN';
+      winner === Team.T ? '恐怖分子胜利' : '反恐精英胜利';
     this.elRoundReason.textContent = reason;
     this.elRoundBanner.classList.add('show');
 
@@ -483,17 +484,17 @@ export class HUD {
     const cRows = cts.map(p => this.tabRow(p)).join('');
 
     this.elTabBoard.innerHTML = `
-      <h3 class="t">TERRORISTS  ${scores.T}</h3>
+      <h3 class="t">恐怖分子  ${scores.T}</h3>
       <table>
         <thead><tr>
-          <th>Name</th><th>K</th><th>D</th><th>A</th><th>HP</th><th>$</th>
+          <th>玩家</th><th>杀</th><th>死</th><th>助</th><th>血</th><th>$</th>
         </tr></thead>
         <tbody>${tRows}</tbody>
       </table>
-      <h3 class="ct" style="margin-top:12px">COUNTER-TERRORISTS  ${scores.CT}</h3>
+      <h3 class="ct" style="margin-top:12px">反恐精英  ${scores.CT}</h3>
       <table>
         <thead><tr>
-          <th>Name</th><th>K</th><th>D</th><th>A</th><th>HP</th><th>$</th>
+          <th>玩家</th><th>杀</th><th>死</th><th>助</th><th>血</th><th>$</th>
         </tr></thead>
         <tbody>${cRows}</tbody>
       </table>

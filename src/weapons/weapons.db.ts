@@ -5,7 +5,7 @@ import { WeaponId, WeaponStats, Team } from '../types';
 export const WEAPONS: Record<WeaponId, WeaponStats> = {
   [WeaponId.Knife]: {
     id: WeaponId.Knife,
-    name: 'Knife',
+    name: '匕首',
     price: 0,
     damage: 40,
     headshotMultiplier: 4.0,
@@ -22,7 +22,7 @@ export const WEAPONS: Record<WeaponId, WeaponStats> = {
   },
   [WeaponId.Glock]: {
     id: WeaponId.Glock,
-    name: 'Glock-18',
+    name: '格洛克 18',
     price: 0,           // T 初始免费
     damage: 23,
     headshotMultiplier: 1.5,
@@ -39,7 +39,7 @@ export const WEAPONS: Record<WeaponId, WeaponStats> = {
   },
   [WeaponId.USP]: {
     id: WeaponId.USP,
-    name: 'USP-S',
+    name: 'USP 消音',
     price: 0,           // CT 初始免费
     damage: 28,
     headshotMultiplier: 1.6,
@@ -56,7 +56,7 @@ export const WEAPONS: Record<WeaponId, WeaponStats> = {
   },
   [WeaponId.DesertEagle]: {
     id: WeaponId.DesertEagle,
-    name: 'Desert Eagle',
+    name: '沙漠之鹰',
     price: 700,
     damage: 63,
     headshotMultiplier: 2.0,
