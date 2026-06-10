@@ -59,11 +59,11 @@ export class Input {
     // 禁止右键菜单 (影响键位)
     this.domElement.addEventListener('contextmenu', this.onContextMenu);
     this.domElement.addEventListener('mousemove', this.onMouseMove);
-    this.domElement.addEventListener('mousedown', this.onMouseDown);
-    this.domElement.addEventListener('mouseup', this.onMouseUp);
     this.domElement.addEventListener('wheel', this.onWheel, { passive: false });
-    // 兜底: pointer lock 期间 mousemove 在某些浏览器会发到 document
+    // 兜底: pointer lock 期间 mousemove + mousedown/mouseup 在某些浏览器会发到 document
     document.addEventListener('mousemove', this.onMouseMove);
+    document.addEventListener('mousedown', this.onMouseDown);
+    document.addEventListener('mouseup', this.onMouseUp);
     // 键监听放 document, 无论焦点在哪儿都能收到
     document.addEventListener('keydown', this.onKeyDown);
     document.addEventListener('keyup', this.onKeyUp);
@@ -179,10 +179,10 @@ export class Input {
   dispose() {
     this.domElement.removeEventListener('contextmenu', this.onContextMenu);
     this.domElement.removeEventListener('mousemove', this.onMouseMove);
-    this.domElement.removeEventListener('mousedown', this.onMouseDown);
-    this.domElement.removeEventListener('mouseup', this.onMouseUp);
     this.domElement.removeEventListener('wheel', this.onWheel);
     document.removeEventListener('mousemove', this.onMouseMove);
+    document.removeEventListener('mousedown', this.onMouseDown);
+    document.removeEventListener('mouseup', this.onMouseUp);
     document.removeEventListener('keydown', this.onKeyDown);
     document.removeEventListener('keyup', this.onKeyUp);
     document.removeEventListener('pointerlockchange', this.onPointerLockChange);

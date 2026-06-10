@@ -78,16 +78,21 @@ export class Collision {
     }
 
     // 安全网: 如果当前位置已经在某个 collider 内部 (例如被刷出 / 几何重叠)
-    // 找最近的面, 把它拉回表面外
-    for (let i = 0; i < colliders.length; i++) {
-      const c = colliders[i];
-      if (this.capsuleIntersectsAABB(out, radius, height, c)) {
-        const push = this.pushOutOfAABB(out, radius, height, c);
-        if (push) {
-          out.copy(push.pos);
-          if (push.axis === 'y' && push.normalY < 0) grounded = true;
+    // 反复推直到完全脱出 (多个 collider 重叠时单次推不够)
+    for (let pass = 0; pass < 5; pass++) {
+      let pushed = false;
+      for (let i = 0; i < colliders.length; i++) {
+        const c = colliders[i];
+        if (this.capsuleIntersectsAABB(out, radius, height, c)) {
+          const push = this.pushOutOfAABB(out, radius, height, c);
+          if (push) {
+            out.copy(push.pos);
+            if (push.axis === 'y' && push.normalY < 0) grounded = true;
+            pushed = true;
+          }
         }
       }
+      if (!pushed) break;
     }
 
     return { position: out, grounded };

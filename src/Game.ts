@@ -776,55 +776,47 @@ export class Game {
   }
 
   // 自己驱动 bot 朝向目标移动 (因为 Bot.update 内部的位移 bug)
+  // 地图硬边界: 玩家和 Bot 不能走出这个范围
+  private readonly MAP_BOUND = 115;  // dust2 整体约 240x220, 留 5m 边距
+
   private driveBotTowardTarget(bot: Bot, dt: number) {
     const waypoints = this.map.layout.waypoints;
     if (!waypoints || waypoints.length === 0) return;
     const bp = bot.bodyGroup.position;
-    // 给每个 bot 分配一个"目标 waypoint 索引", 让它们分散
-    // 基于 bot 在 this.bots 数组中的位置
-    const botIdx = this.bots.indexOf(bot);
     if (bot.state.rotation === undefined) bot.state.rotation = 0;
     if (!(bot as any)._wpOffset) {
-      (bot as any)._wpOffset = botIdx * Math.floor(waypoints.length / this.bots.length);
+      (bot as any)._wpOffset = (this.bots.indexOf(bot) + 1) % waypoints.length;
     }
-    let targetIdx = (bot as any)._wpOffset;
     // 找当前最近的 waypoint
     let nearestIdx = -1, nearestD = Infinity;
     for (let i = 0; i < waypoints.length; i++) {
       const d = Math.hypot(waypoints[i].x - bp.x, waypoints[i].z - bp.z);
       if (d < nearestD) { nearestD = d; nearestIdx = i; }
     }
-    // 选下一个 waypoint (沿 path 顺序)
+    // 朝 _wpOffset 走
     if (nearestIdx >= 0) {
-      // T bot 走向 A site, CT bot 走向 mid 或防守点
-      const isTBot = bot.state.team === Team.T;
-      const targetWp = isTBot
-        ? this.map.layout.waypoints[(nearestIdx + 3) % waypoints.length]  // 跳过几个, 让 bot 走得远
-        : this.map.layout.waypoints[(nearestIdx + 2) % waypoints.length];
-      const target = targetWp;
-
+      const target = waypoints[(bot as any)._wpOffset];
       const dx = target.x - bp.x;
       const dz = target.z - bp.z;
       const d = Math.hypot(dx, dz);
-      if (d > 1.5) {
+      if (d > 2.0) {
         bot.state.rotation = Math.atan2(dx, dz);
       } else {
-        // 到了就跳到下一个
-        (bot as any)._wpOffset = (nearestIdx + 1) % waypoints.length;
-        const nextWp = this.map.layout.waypoints[(bot as any)._wpOffset];
-        const ndx = nextWp.x - bp.x;
-        const ndz = nextWp.z - bp.z;
-        bot.state.rotation = Math.atan2(ndx, ndz);
+        // 到达, 换一个目标 (避免扎堆)
+        (bot as any)._wpOffset = ((bot as any)._wpOffset + 3) % waypoints.length;
+        const next = waypoints[(bot as any)._wpOffset];
+        bot.state.rotation = Math.atan2(next.x - bp.x, next.z - bp.z);
       }
     }
     // 移动
     const yaw = bot.state.rotation;
-    const speed = 4.0;  // 略低于玩家, 平衡
-    const moveX = Math.sin(yaw) * speed * dt;
-    const moveZ = Math.cos(yaw) * speed * dt;
-    const newX = bp.x + moveX;
-    const newZ = bp.z + moveZ;
-    // 简单碰撞: 距离 0.4 范围内不能进 colliders
+    const speed = 4.0;
+    let newX = bp.x + Math.sin(yaw) * speed * dt;
+    let newZ = bp.z + Math.cos(yaw) * speed * dt;
+    // 地图边界 clamp
+    newX = Math.max(-this.MAP_BOUND, Math.min(this.MAP_BOUND, newX));
+    newZ = Math.max(-this.MAP_BOUND, Math.min(this.MAP_BOUND, newZ));
+    // 简单碰撞: 不能进 colliders
     let blocked = false;
     for (const box of this.map.colliders) {
       if (newX > box.min[0] - 0.4 && newX < box.max[0] + 0.4 &&
@@ -835,7 +827,19 @@ export class Game {
     }
     if (!blocked) {
       bot.bodyGroup.position.set(newX, bp.y, newZ);
+    } else {
+      // 撞墙换目标
+      (bot as any)._wpOffset = ((bot as any)._wpOffset + 2) % waypoints.length;
     }
+  }
+
+  // 玩家也加边界 clamp
+  private clampPlayerToMap() {
+    const p = this.player.position;
+    if (p.x < -this.MAP_BOUND) p.x = -this.MAP_BOUND;
+    if (p.x > this.MAP_BOUND) p.x = this.MAP_BOUND;
+    if (p.z < -this.MAP_BOUND) p.z = -this.MAP_BOUND;
+    if (p.z > this.MAP_BOUND) p.z = this.MAP_BOUND;
   }
 
   private canSee(from: { x: number; y: number; z: number } | [number, number, number], to: { x: number; y: number; z: number } | [number, number, number]): boolean {

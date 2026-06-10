@@ -94,7 +94,9 @@ export class PlayerController {
   }
 
   setActiveWeaponIndex(i: number): void {
-    if (i < 0 || i >= this.state.weapons.length) return;
+    if (this.state.weapons.length === 0) { this.state.activeWeaponIndex = -1; return; }
+    if (i < 0) i = 0;
+    if (i >= this.state.weapons.length) i = this.state.weapons.length - 1;
     this.state.activeWeaponIndex = i;
   }
 

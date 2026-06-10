@@ -70,8 +70,11 @@ function showPauseOverlay() {
 
 document.addEventListener('pointerlockchange', () => {
   if (document.pointerLockElement === canvas) {
-    // 锁成功: 隐藏菜单 (包括 PAUSED overlay)
-    if (started) menu.style.display = 'none';
+    // 锁成功: 完全隐藏菜单 + 禁止拦截输入
+    if (started) {
+      menu.classList.add('hidden');
+      menu.style.display = 'none';
+    }
   } else if (started) {
     showPauseOverlay();
   }

@@ -795,6 +795,7 @@ html, body {
   pointer-events: auto;
   font-family: 'Courier New', 'Consolas', monospace;
 }
+#menu.hidden { display: none !important; pointer-events: none; }
 
 .main-menu {
   max-width: 640px;
