@@ -742,17 +742,12 @@ export class Bot {
     if (this.state.health <= 0) {
       this.state.health = 0;
       this.state.alive = false;
+      // 事件格式与 Game.ts line 400 listener 一致: { killer, victim, hs, weapon }
       bus.emit('player_kill', {
-        kill: {
-          shooterId: attackerId,
-          victimId: this.state.id,
-          weaponId: this.getActiveWeapon()?.stats.id ?? WeaponId.Knife,
-          damage: dmg,
-          headshot: false,
-          position: this.state.position
-        },
         killer: attackerId,
-        victim: this.state.id
+        victim: this.state.id,
+        hs: false,
+        weapon: this.getActiveWeapon()?.stats.id ?? WeaponId.Knife
       });
     }
   }

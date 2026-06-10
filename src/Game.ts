@@ -165,6 +165,12 @@ export class Game {
     // 7) 武器系统
     this.weapons = new WeaponSystem();
     this.weapons.init(this.player.state.weapons);
+    // init() 内部会强制把 activeIndex 设为 0 (刀), 玩家应该用枪
+    // 这里根据玩家实际的 activeWeaponIndex 同步过来
+    if (this.player.state.activeWeaponIndex >= 0 &&
+        this.player.state.activeWeaponIndex < this.weapons.weapons.length) {
+      this.weapons.activeIndex = this.player.state.activeWeaponIndex;
+    }
     this.weapons.onFire = (wid, origin, dir) => {
       // 显示曳光弹
       const stat = this.weapons.weapons[this.weapons.activeIndex]?.stats;
@@ -265,25 +271,108 @@ export class Game {
 
   private buildBotModel(team: Team): THREE.Group {
     const g = new THREE.Group();
-    const bodyColor = team === Team.T ? 0x3A2A1A : 0x3A4258;
-    const accent = team === Team.T ? 0xFF3030 : 0x3A78D8;
+
+    // ─── 队伍色高对比: 队友 T = 暖红棕+亮红腰带+红头巾;
+    //                  敌人 CT = 冷深蓝+亮蓝腰带+蓝头盔 ──
+    // 玩家所在队伍 T, 所以 T = 友军(暖色), CT = 敌军(冷色)
+    const isT = team === Team.T;
+    const bodyColor = isT ? 0x6B2418 : 0x1E3A6B;   // 主身: 红棕 / 深蓝
+    const accent    = isT ? 0xFF2030 : 0x1FA8FF;   // 腰带: 亮红 / 亮蓝
+    const limbColor = isT ? 0x2B1010 : 0x102540;   // 腿/鞋: 更深
+    const headAccent = isT ? 0xFF4040 : 0x4FB8FF;  // 头巾/头盔: 亮色
+
     const headMat = new THREE.MeshLambertMaterial({ color: bodyColor });
     const bodyMat = new THREE.MeshLambertMaterial({ color: bodyColor });
-    const accentMat = new THREE.MeshLambertMaterial({ color: accent });
-    const legMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
+    const accentMat = new THREE.MeshBasicMaterial({ color: accent }); // 不受光, 颜色更亮
+    const legMat = new THREE.MeshLambertMaterial({ color: limbColor });
+    const headAccentMat = new THREE.MeshBasicMaterial({ color: headAccent });
 
     const leg = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.85, 0.35), legMat);
     leg.position.set(0, 0.425, 0); leg.castShadow = true; g.add(leg);
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.7, 0.35), bodyMat);
     body.position.set(0, 1.2, 0); body.castShadow = true; g.add(body);
-    const belt = new THREE.Mesh(new THREE.BoxGeometry(0.57, 0.12, 0.37), accentMat);
+    // 队伍腰带 - 用 BasicMaterial 让颜色最饱和
+    const belt = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.18, 0.4), accentMat);
     belt.position.set(0, 0.88, 0); g.add(belt);
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), headMat);
+    // 头
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.42, 0.42), headMat);
     head.position.set(0, 1.78, 0); head.castShadow = true; g.add(head);
+    // 头顶色块 (T=红头巾, CT=蓝头盔) - 显眼!
+    const hat = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.14, 0.46), headAccentMat);
+    hat.position.set(0, 2.04, 0); g.add(hat);
+    // 肩章 (亮色条)
+    const shoulderL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.4, 0.32), accentMat);
+    shoulderL.position.set(-0.32, 1.4, 0); g.add(shoulderL);
+    const shoulderR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.4, 0.32), accentMat);
+    shoulderR.position.set(0.32, 1.4, 0); g.add(shoulderR);
+
     // 简易枪 (背在身后)
     const gun = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.6), new THREE.MeshLambertMaterial({ color: 0x1A1A1A }));
     gun.position.set(0.25, 1.3, -0.2); g.add(gun);
+
+    // ─── 头顶悬浮队伍标签牌: Sprite (永远朝向相机, 不被遮挡) ───
+    // T 队友 = 亮红 "T" + 灰字,  敌人 CT = 亮蓝 "CT" + 灰字
+    const labelCanvas = document.createElement('canvas');
+    labelCanvas.width = 256; labelCanvas.height = 128;
+    const ctx2 = labelCanvas.getContext('2d')!;
+    // 背景半透明圆角矩形
+    ctx2.fillStyle = isT ? 'rgba(180, 20, 20, 0.85)' : 'rgba(20, 80, 180, 0.85)';
+    this.roundRect(ctx2, 8, 18, 240, 92, 16);
+    ctx2.fill();
+    // 描边
+    ctx2.strokeStyle = isT ? '#FF6060' : '#60B8FF';
+    ctx2.lineWidth = 4;
+    this.roundRect(ctx2, 8, 18, 240, 92, 16);
+    ctx2.stroke();
+    // 文字
+    ctx2.fillStyle = '#FFFFFF';
+    ctx2.font = 'bold 72px Arial';
+    ctx2.textAlign = 'center';
+    ctx2.textBaseline = 'middle';
+    ctx2.fillText(isT ? 'T' : 'CT', 128, 64);
+    const labelTex = new THREE.CanvasTexture(labelCanvas);
+    labelTex.minFilter = THREE.LinearFilter;
+    labelTex.magFilter = THREE.LinearFilter;
+    const labelMat = new THREE.SpriteMaterial({ map: labelTex, depthTest: false, depthWrite: false });
+    const label = new THREE.Sprite(labelMat);
+    label.scale.set(0.8, 0.4, 1);
+    label.position.set(0, 2.55, 0);    // 头顶上方
+    label.renderOrder = 999;           // 永远画在最前
+    g.add(label);
+
+    // 队友 T 在玩家头上方再标一行 "ALLY"; 敌人 CT 标 "ENEMY"
+    const subCanvas = document.createElement('canvas');
+    subCanvas.width = 256; subCanvas.height = 64;
+    const ctx3 = subCanvas.getContext('2d')!;
+    ctx3.fillStyle = isT ? 'rgba(60, 60, 60, 0.85)' : 'rgba(60, 60, 60, 0.85)';
+    this.roundRect(ctx3, 30, 8, 196, 48, 10);
+    ctx3.fill();
+    ctx3.fillStyle = isT ? '#FF8080' : '#80C0FF';
+    ctx3.font = 'bold 30px Arial';
+    ctx3.textAlign = 'center';
+    ctx3.textBaseline = 'middle';
+    ctx3.fillText(isT ? 'ALLY' : 'ENEMY', 128, 32);
+    const subTex = new THREE.CanvasTexture(subCanvas);
+    subTex.minFilter = THREE.LinearFilter;
+    const subMat = new THREE.SpriteMaterial({ map: subTex, depthTest: false, depthWrite: false });
+    const sub = new THREE.Sprite(subMat);
+    sub.scale.set(0.7, 0.18, 1);
+    sub.position.set(0, 2.85, 0);
+    sub.renderOrder = 999;
+    g.add(sub);
+
     return g;
+  }
+
+  /** canvas 2d 辅助: 圆角矩形路径 */
+  private roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
   }
 
   private createMatch() {

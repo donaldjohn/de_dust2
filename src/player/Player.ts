@@ -384,12 +384,9 @@ export class PlayerController {
       }
     }
 
-    // 主武器开火 (按住的持续键 -> 由 Game 的 WeaponSystem 控制冷却)
-    if (input.primaryAttack && this.onShoot) {
-      const origin = this.getMuzzleOrigin();
-      const dir = this.getAimDir();
-      this.onShoot(origin, dir);
-    }
+    // 主武器开火: 由 Game.update 顶部接 input.primaryAttack -> weapons.startFire()
+    // 这里不再调 onShoot, 避免每帧 startFire+stopFire 自相抵消
+    // (保留 onShoot 回调但不在此处触发)
   }
 
   // ---- 枪口 / 朝向辅助 ----

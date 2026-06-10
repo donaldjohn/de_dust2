@@ -104,6 +104,10 @@ export class Collision {
    * 检测 pos 处的胶囊是否与 colliders 任意一个相交.
    * 如果是, 沿 axis 方向 (positive = +X/+Y/+Z) 把它拉回到该面 + 半径 (XZ) / 端 (Y) 外.
    * 返回修正后的轴坐标, 或 null 表示没碰撞.
+   *
+   * 重要修复: 多个 collider 重叠/相邻时 (例如玩家站在一个平台上, 旁边有墙),
+   * 简单按列表顺序取第一个会让玩家被"推回"到错误的墙内侧.
+   * 修正: 收集所有相交的 collider, 选"运动方向上距离最近"的那一个推回.
    */
   private static snapToSurface(
     pos: THREE.Vector3,
@@ -113,13 +117,14 @@ export class Collision {
     height: number,
     colliders: AABB[]
   ): number | null {
+    let bestNewVal: number | null = null;
+    let bestDist = Infinity;
+
     for (let i = 0; i < colliders.length; i++) {
       const c = colliders[i];
       if (!this.capsuleIntersectsAABB(pos, radius, height, c)) continue;
 
-      // 决定推回方向:
-      // X / Z: 沿运动反方向的面, 让圆心与该面相距 radius
-      // Y:     向下 -> a.min[1] (脚底贴地); 向上 -> a.max[1] - height (头顶贴天花板)
+      // 候选: 沿 axis 推到"刚好在 collider 外"
       let newVal: number;
       if (axis === 'y') {
         if (positive) {
@@ -134,9 +139,15 @@ export class Collision {
       } else {
         newVal = positive ? c.max[2] + radius : c.min[2] - radius;
       }
-      return newVal;
+
+      // 选"位移代价最小"的那个 (玩家推得越少越对)
+      const dist = Math.abs(newVal - pos[axis]);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestNewVal = newVal;
+      }
     }
-    return null;
+    return bestNewVal;
   }
 
   /** 胶囊(在 pos 位置)是否与 aabb 相交 (XZ 圆 + Y 段) */

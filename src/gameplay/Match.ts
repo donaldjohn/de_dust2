@@ -290,16 +290,7 @@ export class Match {
       killerState.money = clamp(killerState.money + reward, 0, 99999);
     }
 
-    // 触发事件
-    const hit: BulletHit = {
-      shooterId: killer,
-      victimId: victim,
-      weaponId,
-      damage: 0,
-      headshot,
-      position: victimState.position
-    };
-    bus.emit('player_kill', { kill: hit, killer, victim });
+    // 事件已由 Game 层 emit, 这里不再 emit (避免递归导致卡死)
   }
 
   private calcKillReward(weaponId: WeaponId): number {
