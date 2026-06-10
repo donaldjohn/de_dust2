@@ -303,7 +303,7 @@ export class Match {
   }
 
   /** T 玩家在 A/B 站点按 E, 保持 3.2s 完成埋包 */
-  startPlant(uid: string, site: BombSite): void {
+  startPlant(uid: string, site: BombSite, pos?: [number, number, number]): void {
     if (this.phase !== RoundPhase.Live) return;
     if (this.bombPlanted) return;
     if (this.bombPlantedThisRound) return; // 简化: 整局每回合只允许一次
@@ -312,10 +312,16 @@ export class Match {
     if (!player.hasBomb) return;
     if (site !== BombSite.A && site !== BombSite.B) return;
 
-    // 检查 playerPositions 是否在 site 半径内 - 这里 world 不在手, 改由 Game 层校验
-    // 此处仅占位逻辑: 真实进度由 world.plantProgress 推进
-    // 简化: 直接同步完成埋包 (因为 Game 层会在 update 内传入 world.plantProgress)
-    // 实际处理: 在 updateLive 末尾由 world.plantProgress==1 触发完成
+    // 之前这里是空方法 (注释说"占位"), 但 Game.updatePlantDefuse 调完之后没设 bombPlanted=true
+    // 导致 updateLive 永远不开始 bombTimer 倒计时. 修法: 真正完成埋包状态.
+    this.bombPlanted = true;
+    this.bombPlantedThisRound = true;
+    this.bombSite = site;
+    this.bombPos = pos ?? [0, 0, 0];
+    this.bombPlanter = uid;
+    this.bombTimer = CONFIG.BOMB_TIME;
+    // 埋包后玩家不再持弹
+    player.hasBomb = false;
   }
 
   /** CT 玩家在 bomb 半径内按 E 拆包, 持续 10s */

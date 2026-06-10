@@ -829,7 +829,9 @@ export class Game {
       if (this.plantProgress >= 1) {
         // 完成
         const site = this.nearestSite(this.player.position);
-        this.match.startPlant(LOCAL_PLAYER_ID, site);   // 实际埋包
+        this.match.startPlant(LOCAL_PLAYER_ID, site, [
+          this.player.position.x, this.player.position.y, this.player.position.z
+        ]);   // 实际埋包
         this.plantingPlayerId = null;
         this.plantProgress = 0;
         this.localPlayerHasBomb = false;
@@ -844,7 +846,9 @@ export class Game {
         this.plantProgress += dt / CONFIG.PLANT_TIME;
         if (this.plantProgress >= 1) {
           const site = bot.decidedSite;
-          this.match.startPlant(bot.state.id, site);
+          this.match.startPlant(bot.state.id, site, [
+            bot.bodyGroup.position.x, bot.bodyGroup.position.y, bot.bodyGroup.position.z
+          ]);
           this.plantingPlayerId = null;
           this.plantProgress = 0;
           bus.emit('bomb_planted', { site, planter: bot.state.id });
