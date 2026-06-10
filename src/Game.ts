@@ -474,7 +474,8 @@ export class Game {
   };
 
   private update(dt: number) {
-    this.input.update();
+    // 注意: input.update() 必须放最后调, 之前放在开头导致 mouseDX/DY 被清零
+    // (player.update 要读 mouseDX/DY, 必须先读再清)
 
     // 1) 玩家控制 (需要 pointer lock 才能控制相机, 但移动键在未锁定时也可以响应)
     if (this.input.pointerLocked) {
@@ -515,6 +516,9 @@ export class Game {
     this.hud.update();
     this.hud.setPointerLocked(this.input.pointerLocked);
     this.hud.setBuyMenuOpen(this.buyMenu.isOpen);
+
+    // 最后: 清零本帧的鼠标/滚轮增量 (在所有读 input 的模块都跑完之后)
+    this.input.update();
   }
 
   private handleBuyMenuHotkey() {
