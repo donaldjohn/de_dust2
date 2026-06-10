@@ -62,6 +62,8 @@ export class Input {
     this.domElement.addEventListener('mousedown', this.onMouseDown);
     this.domElement.addEventListener('mouseup', this.onMouseUp);
     this.domElement.addEventListener('wheel', this.onWheel, { passive: false });
+    // 兜底: pointer lock 期间 mousemove 在某些浏览器会发到 document
+    document.addEventListener('mousemove', this.onMouseMove);
     // 键监听放 document, 无论焦点在哪儿都能收到
     document.addEventListener('keydown', this.onKeyDown);
     document.addEventListener('keyup', this.onKeyUp);
@@ -133,8 +135,12 @@ export class Input {
 
   private handleMouseMove(e: MouseEvent) {
     if (!this.pointerLocked) return;
-    this.mouseDX += e.movementX || 0;
-    this.mouseDY += e.movementY || 0;
+    // 部分浏览器/版本: movementX 缺失, 用 webkitMovementX 兜底
+    const m: any = e;
+    const dx = m.movementX || m.webkitMovementX || m.mozMovementX || 0;
+    const dy = m.movementY || m.webkitMovementY || m.mozMovementY || 0;
+    this.mouseDX += dx;
+    this.mouseDY += dy;
   }
 
   private handleMouseDown(e: MouseEvent) {
@@ -176,6 +182,7 @@ export class Input {
     this.domElement.removeEventListener('mousedown', this.onMouseDown);
     this.domElement.removeEventListener('mouseup', this.onMouseUp);
     this.domElement.removeEventListener('wheel', this.onWheel);
+    document.removeEventListener('mousemove', this.onMouseMove);
     document.removeEventListener('keydown', this.onKeyDown);
     document.removeEventListener('keyup', this.onKeyUp);
     document.removeEventListener('pointerlockchange', this.onPointerLockChange);
