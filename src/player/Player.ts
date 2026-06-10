@@ -272,6 +272,54 @@ export class PlayerController {
     this.syncState();
   }
 
+  /**
+   * 不依赖 pointer lock 的简化 update: 只算 XZ 移动, 不改 yaw/pitch
+   * 用于: pointer lock 偶尔失败/丢失时, 玩家仍能用 WASD 移动, 避免完全卡死
+   */
+  updateWithoutLook(dt: number, input: Input, colliders: AABB[]): void {
+    if (!this.state.alive) return;
+
+    // ---- 移动方向 ----
+    this.tmpForward.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
+    this.tmpRight.set(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
+    let mvx = 0, mvz = 0;
+    if (input.forward) { mvx += this.tmpForward.x; mvz += this.tmpForward.z; }
+    if (input.back)    { mvx -= this.tmpForward.x; mvz -= this.tmpForward.z; }
+    if (input.right)   { mvx += this.tmpRight.x;   mvz += this.tmpRight.z; }
+    if (input.left)    { mvx -= this.tmpRight.x;   mvz -= this.tmpRight.z; }
+    const horizLen = Math.hypot(mvx, mvz);
+    if (horizLen > 0) { mvx /= horizLen; mvz /= horizLen; }
+    const speedMul = input.sprint ? CONFIG.SPRINT_MULT : 1.0;
+    const moveSpeed = CONFIG.MOVE_SPEED * speedMul;
+    this.velocity.x = mvx * moveSpeed;
+    this.velocity.z = mvz * moveSpeed;
+
+    // 重力
+    this.velocity.y -= CONFIG.GRAVITY * dt;
+    if (this.velocity.y < -50) this.velocity.y = -50;
+
+    // 碰撞
+    const result = Collision.resolveMove(
+      this.position, this.velocity,
+      this.radius, this.height, colliders, dt
+    );
+    this.position.copy(result.position);
+    this.isGrounded = result.grounded;
+    if (this.position.y < 0) {
+      this.position.y = 0;
+      this.velocity.y = 0;
+      this.isGrounded = true;
+    }
+
+    // 同步 camera 位置 (旋转不变)
+    this.camera.position.set(
+      this.position.x,
+      this.position.y + CONFIG.HEAD_HEIGHT,
+      this.position.z
+    );
+    this.syncState();
+  }
+
   /** 同步 camera 位置 + 旋转 */
   private syncCamera(): void {
     // camera 位置 = 脚底 + (0, HEAD_HEIGHT, 0)

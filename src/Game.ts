@@ -476,7 +476,7 @@ export class Game {
   private update(dt: number) {
     this.input.update();
 
-    // 1) 玩家控制 (需要 pointer lock)
+    // 1) 玩家控制 (需要 pointer lock 才能控制相机, 但移动键在未锁定时也可以响应)
     if (this.input.pointerLocked) {
       if (this.player.state.alive) {
         this.handleBuyMenuHotkey();
@@ -489,7 +489,15 @@ export class Game {
         }
       }
     } else {
-      // 未锁定: 跳过玩家输入, 但仍要消费点击事件
+      // 未锁定: 仍然让玩家 WASD 移动 (但相机不能转, 鼠标无响应)
+      // 这样在 pointer lock 偶尔失败时游戏仍可玩
+      if (this.player.state.alive) {
+        this.handleBuyMenuHotkey();
+        // 只用 XZ 速度, 不让 Player.update 改 yaw/pitch
+        // 玩家没有 pointer lock 时也不掉血/不重生
+        this.player.updateWithoutLook(dt, this.input, this.map.colliders);
+        this.weapons.update(dt, this.buildShootContext());
+      }
       this.input.consumeKey('Click');
     }
 

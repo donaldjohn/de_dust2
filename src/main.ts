@@ -74,4 +74,11 @@ document.addEventListener('pointerlockchange', () => {
   }
 });
 
+// 点击 canvas 重新请求 pointer lock (失锁后用户想再玩直接点屏幕即可)
+canvas.addEventListener('click', () => {
+  if (started && document.pointerLockElement !== canvas) {
+    requestPointerLock();
+  }
+});
+
 buildStartMenu();

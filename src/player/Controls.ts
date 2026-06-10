@@ -62,8 +62,9 @@ export class Input {
     this.domElement.addEventListener('mousedown', this.onMouseDown);
     this.domElement.addEventListener('mouseup', this.onMouseUp);
     this.domElement.addEventListener('wheel', this.onWheel, { passive: false });
-    window.addEventListener('keydown', this.onKeyDown);
-    window.addEventListener('keyup', this.onKeyUp);
+    // 键监听放 document, 无论焦点在哪儿都能收到
+    document.addEventListener('keydown', this.onKeyDown);
+    document.addEventListener('keyup', this.onKeyUp);
     document.addEventListener('pointerlockchange', this.onPointerLockChange);
   }
 
@@ -175,8 +176,8 @@ export class Input {
     this.domElement.removeEventListener('mousedown', this.onMouseDown);
     this.domElement.removeEventListener('mouseup', this.onMouseUp);
     this.domElement.removeEventListener('wheel', this.onWheel);
-    window.removeEventListener('keydown', this.onKeyDown);
-    window.removeEventListener('keyup', this.onKeyUp);
+    document.removeEventListener('keydown', this.onKeyDown);
+    document.removeEventListener('keyup', this.onKeyUp);
     document.removeEventListener('pointerlockchange', this.onPointerLockChange);
   }
 }
