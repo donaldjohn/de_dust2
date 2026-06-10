@@ -752,6 +752,13 @@ export class Bot {
       this.state.health = 0;
       this.state.alive = false;
       this.healthBar.setVisible(false);  // 死了隐藏血条
+      // 倒下: 沿 Z 轴 (左右方向) 倒 ~90°, 看起来像尸体
+      this.bodyGroup.rotation.z = Math.PI / 2;
+      // 朝向: 让脸朝下, 用 yaw 选个倒地方向 (左右倒)
+      // 简单做法: 随机 -1 / +1
+      this.bodyGroup.rotation.z = (Math.random() < 0.5 ? 1 : -1) * Math.PI / 2;
+      // 略下沉, 让头接近地面
+      this.bodyGroup.position.y = 0.3;
       // 事件格式与 Game.ts line 400 listener 一致: { killer, victim, hs, weapon }
       bus.emit('player_kill', {
         killer: attackerId,
@@ -771,6 +778,8 @@ export class Bot {
     this.state.alive = true;
     this.healthBar.setRatio(1.0);  // 血条回满
     this.healthBar.setVisible(true);
+    this.bodyGroup.rotation.z = 0;  // 站起来
+    this.bodyGroup.position.y = 0;  // 恢复原 y
     this.aiState = BotState.Idle;
     this.path = [];
     this.targetEnemyId = null;

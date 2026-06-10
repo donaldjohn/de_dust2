@@ -508,10 +508,9 @@ export class Game {
         audio.playDeath();
       } else {
         const bot = this.botTargetMap.get(p.id);
-        if (bot) {
-          bot.state.alive = false;
-          bot.bodyGroup.visible = false;
-          bot.healthBar.setVisible(false);
+        if (bot && bot.state.alive) {
+          // 让 Bot 走完整的死亡流程: 倒下 + 血条隐藏
+          bot.takeDamage(99999, 'world', bot.state.position);
         }
       }
     });

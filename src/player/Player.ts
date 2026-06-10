@@ -49,6 +49,7 @@ export class PlayerController {
   private team: Team;
   private radius: number;
   private height: number;
+  private isDead: boolean = false;  // 死亡后仍走 update (上帝模式 / 自由观战)
   private readonly tmpForward = new THREE.Vector3();
   private readonly tmpRight = new THREE.Vector3();
   private readonly tmpMove = new THREE.Vector3();
@@ -118,6 +119,7 @@ export class PlayerController {
     this.state.alive = true;
     this.state.health = 100;
     this.state.armor = 100;
+    this.isDead = false;  // 复活, 退出上帝模式
     this.state.helmet = true;
     this.state.position = [position[0], position[1], position[2]];
     this.state.rotation = facing;
@@ -171,6 +173,7 @@ export class PlayerController {
     if (!this.state.alive) return;
     this.state.alive = false;
     this.state.deaths += 1;
+    this.isDead = true;  // 上帝模式: 仍跑 update, 但走 noclip 分支
     bus.emit('player_died', {
       id: this.state.id,
       team: this.state.team,
@@ -182,7 +185,6 @@ export class PlayerController {
 
   update(dt: number, input: Input, colliders: AABB[]): void {
     // ---- 1) 视角 (yaw / pitch) ----
-    // 死亡时仍然更新视角, 让玩家可以自由浏览 (上帝视角/观战)
     if (input.pointerLocked) {
       this.yaw -= input.mouseDX * CONFIG.MOUSE_SENSITIVITY;
       this.pitch -= input.mouseDY * CONFIG.MOUSE_SENSITIVITY;
@@ -191,8 +193,31 @@ export class PlayerController {
       if (this.pitch < -limit) this.pitch = -limit;
     }
 
-    // 死亡时只更新视角, 跳过移动/开火
-    if (!this.state.alive) {
+    // ---- 死亡 -> 上帝模式 (noclip) ----
+    if (this.isDead) {
+      // forward 含 pitch, 让玩家"飞"
+      // 速度比正常快 2x, 飞行感更爽
+      const cy = Math.cos(this.yaw), sy = Math.sin(this.yaw);
+      const cp = Math.cos(this.pitch), sp = Math.sin(this.pitch);
+      // forward: 水平分量 (-sy, 0, -cy) 再按 pitch 旋转 -> 含 y 分量
+      const fX = -sy * cp, fY = -sp, fZ = -cy * cp;
+      const rX = cy, rZ = -sy;  // right (XZ)
+      const speedMul = input.sprint ? 2.0 : 1.0;
+      const speed = CONFIG.MOVE_SPEED * 1.5 * speedMul;  // ghost 1.5x
+      let dx = 0, dy = 0, dz = 0;
+      if (input.forward) { dx += fX; dy += fY; dz += fZ; }
+      if (input.back)    { dx -= fX; dy -= fY; dz -= fZ; }
+      if (input.right)   { dx += rX; dz += rZ; }
+      if (input.left)    { dx -= rX; dz -= rZ; }
+      // 空格上升, 左 Shift 下降 (sprint 在 ghost 模式用于加速, 但要个下降键)
+      // 简单起见: space 上升 (jump=true), Ctrl/左 Shift 单独通过任意键留作 - 这里只支持 jump 升, no 降
+      if (input.jump) dy += 1;
+      const len = Math.hypot(dx, dy, dz);
+      if (len > 0) { dx /= len; dy /= len; dz /= len; }
+      this.position.x += dx * speed * dt;
+      this.position.y += dy * speed * dt;
+      this.position.z += dz * speed * dt;
+      // ghost 模式下不做 clamp (允许飞出地图)
       this.syncCamera();
       this.syncState();
       return;
@@ -281,6 +306,30 @@ export class PlayerController {
    * 用于: pointer lock 偶尔失败/丢失时, 玩家仍能用 WASD 移动, 避免完全卡死
    */
   updateWithoutLook(dt: number, input: Input, colliders: AABB[]): void {
+    // 死亡 (isDead): 也走 noclip, 但不更新视角 (因为没 pointer lock)
+    if (this.isDead) {
+      const cy = Math.cos(this.yaw), sy = Math.sin(this.yaw);
+      const cp = Math.cos(this.pitch), sp = Math.sin(this.pitch);
+      const fX = -sy * cp, fY = -sp, fZ = -cy * cp;
+      const rX = cy, rZ = -sy;
+      const speed = CONFIG.MOVE_SPEED * 1.5;
+      let dx = 0, dy = 0, dz = 0;
+      if (input.forward) { dx += fX; dy += fY; dz += fZ; }
+      if (input.back)    { dx -= fX; dy -= fY; dz -= fZ; }
+      if (input.right)   { dx += rX; dz += rZ; }
+      if (input.left)    { dx -= rX; dz -= rZ; }
+      if (input.jump)    { dy += 1; }
+      const len = Math.hypot(dx, dy, dz);
+      if (len > 0) { dx /= len; dy /= len; dz /= len; }
+      this.position.x += dx * speed * dt;
+      this.position.y += dy * speed * dt;
+      this.position.z += dz * speed * dt;
+      this.camera.position.set(
+        this.position.x, this.position.y + CONFIG.HEAD_HEIGHT, this.position.z
+      );
+      this.syncState();
+      return;
+    }
     if (!this.state.alive) return;
 
     // ---- 移动方向 ----
