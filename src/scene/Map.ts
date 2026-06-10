@@ -888,12 +888,12 @@ export class Map {
     tSpawnPositions.forEach(([x, z], i) => {
       this.spawns.push({
         team: Team.T,
-        position: [x, 1.0, z],
+        position: [x, 0, z],
         facing: tBaseAngle
       });
     });
     // Mark the bomb carrier (first T)
-    this.spawns[0].position = [this.spawns[0].position[0], 1.0, this.spawns[0].position[2]];
+    this.spawns[0].position = [this.spawns[0].position[0], 0, this.spawns[0].position[2]];
 
     // 5 CT spawns at north-east, facing south-west
     const ctBaseAngle = Math.atan2(-80, -100) + Math.PI; // facing SW
@@ -907,7 +907,7 @@ export class Map {
     ctSpawnPositions.forEach(([x, z]) => {
       this.spawns.push({
         team: Team.CT,
-        position: [x, 1.0, z],
+        position: [x, 0, z],
         facing: ctBaseAngle
       });
     });

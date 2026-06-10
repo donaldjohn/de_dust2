@@ -319,11 +319,14 @@ export class HUD {
 
   private renderHealth() {
     const p = this.localPlayer!;
-    this.elHp.textContent = String(Math.max(0, Math.round(p.health)));
-    this.elHp.className = 'hp' + (p.health <= 20 ? ' crit' : p.health <= 50 ? ' low' : '');
+    // 安全 clamp: 防止任何异常导致显示巨大数字
+    const safeHealth = Math.max(0, Math.min(999, Math.round(p.health || 0)));
+    this.elHp.textContent = String(safeHealth);
+    this.elHp.className = 'hp' + (safeHealth <= 20 ? ' crit' : safeHealth <= 50 ? ' low' : '');
 
-    this.elArmor.textContent = String(p.armor);
-    this.elArmor.className = 'armor' + (p.armor <= 0 ? ' zero' : '');
+    const safeArmor = Math.max(0, Math.min(999, Math.round(p.armor || 0)));
+    this.elArmor.textContent = String(safeArmor);
+    this.elArmor.className = 'armor' + (safeArmor <= 0 ? ' zero' : '');
 
     this.elHelmet.className = 'helmet' + (p.helmet ? '' : ' none');
     this.elHelmet.title = p.helmet ? 'Kevlar + Helmet' : 'No Helmet';

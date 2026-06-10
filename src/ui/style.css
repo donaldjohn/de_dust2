@@ -316,47 +316,35 @@ html, body {
 .hud-money .kda .a { color: #FFD580; }
 
 /* ============================================================
- * 准星 (中央)
+ * 准星 (中央) - 4 条白色短线 + 黑边描边
+ * 用 4 个绝对定位的子 div 绘制, 简单可靠
  * ============================================================ */
 #crosshair {
   position: fixed;
   top: 50%;
   left: 50%;
-  width: 4px;
-  height: 4px;
-  transform: translate(-50%, -50%);
+  width: 0;
+  height: 0;
   pointer-events: none;
   z-index: 20;
-  color: #fff;
-  font-size: 4px;       /* 隐藏 + 字符 */
-  line-height: 4px;
+  color: transparent;
+  font-size: 0;
+  line-height: 0;
   overflow: visible;
 }
 
-/* 准星 4 条短线 (用伪元素画) */
-#crosshair::before,
-#crosshair::after {
-  content: '';
+#crosshair .l,
+#crosshair .r,
+#crosshair .t,
+#crosshair .b {
   position: absolute;
   background: #fff;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.8);
 }
-
-#crosshair::before {
-  width: 12px; height: 2px;
-  left: 50%; top: 50%;
-  transform: translate(-50%, -50%) translateX(10px);
-  box-shadow:
-    -22px 0 0 -1px #fff,    /* 右侧 */
-    -10px 0 0 0 transparent;
-}
-#crosshair::after {
-  width: 2px; height: 12px;
-  left: 50%; top: 50%;
-  transform: translate(-50%, -50%) translateY(10px);
-  box-shadow:
-    0 -22px 0 0 #fff;       /* 上方 */
-}
+#crosshair .t { left: -1px; top: -16px; width: 2px; height: 8px; }
+#crosshair .b { left: -1px; top: 8px;   width: 2px; height: 8px; }
+#crosshair .l { left: -16px; top: -1px; width: 8px; height: 2px; }
+#crosshair .r { left: 8px;   top: -1px; width: 8px; height: 2px; }
 
 #crosshair.hit { animation: crosshit 0.18s ease-out; }
 

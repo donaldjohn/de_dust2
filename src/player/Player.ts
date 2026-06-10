@@ -257,6 +257,13 @@ export class PlayerController {
     this.position.copy(result.position);
     this.isGrounded = result.grounded;
 
+    // 地面兜底: 地面 (y=0) 不在 AABB 列表里, 玩家可能穿过; 强制不能低于地面
+    if (this.position.y < 0) {
+      this.position.y = 0;
+      this.velocity.y = 0;
+      this.isGrounded = true;
+    }
+
     // ---- 6) 一次性按键 (R / B / E / G / 数字切枪 / 滚轮) ----
     this.handleOneShots(input, dt);
 
