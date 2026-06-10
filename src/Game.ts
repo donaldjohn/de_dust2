@@ -20,6 +20,8 @@ import { Input } from './player/Controls';
 
 // 武器
 import { WeaponSystem, ShootContext, ShootTarget } from './weapons/WeaponSystem';
+import { HitFeedback } from './weapons/HitFeedback';
+import { audio } from './audio/AudioManager';
 import { WEAPONS } from './weapons/weapons.db';
 
 // 比赛
@@ -50,6 +52,7 @@ export class Game {
   /** 玩家是否还活着 (供 main.ts 决定点击时是否 respawn) */
   get isPlayerAlive(): boolean { return this.player.state.alive; }
   private weapons!: WeaponSystem;
+  private hitFeedback!: HitFeedback;
   private match!: Match;
   private hud!: HUD;
   private buyMenu!: BuyMenu;
@@ -190,6 +193,9 @@ export class Game {
 
     // 8) 视图模型挂载
     this.scene.add(this.viewmodelGroup);
+
+    // 9) 击中反馈 (飘字 + hit marker)
+    this.hitFeedback = new HitFeedback(this.scene);
   }
 
   private createPlayer() {
@@ -409,6 +415,10 @@ export class Game {
       if (p.victim === LOCAL_PLAYER_ID) {
         this.hud.flashDamage();
       }
+      // 玩家击杀奖励音效
+      if (p.killer === LOCAL_PLAYER_ID) {
+        audio.playKill();
+      }
       // 比分更新 (kill count 显示用)
       const killerState = this.match.players.get(p.killer);
       const victimState = this.match.players.get(p.victim);
@@ -421,22 +431,49 @@ export class Game {
     bus.on('round_end', (p: { result: any; score: MatchScore }) => {
       this.roundEndTimer = 4.0;
       this.hud.showRoundResult(p.result.winner, p.result.reason);
+      audio.playRoundEnd(p.result.winner === this.player.state.team);
     });
 
     bus.on('match_over', (p: { winner: Team; score: MatchScore }) => {
       this.hud.showMessage(`${p.winner === Team.T ? 'TERRORISTS' : 'COUNTER-TERRORISTS'} WIN THE MATCH ${p.score.T}-${p.score.CT}`);
     });
 
+    bus.on('round_start', () => {
+      audio.playRoundStart();
+    });
+
     bus.on('bomb_planted', (p: { site: BombSite; planter: string }) => {
       this.hud.showMessage('BOMB PLANTED', 2000);
+      audio.playBombPlant();
     });
 
     bus.on('bomb_explode', () => {
       this.hud.showMessage('BOOM!', 2000);
+      audio.playBombExplode();
     });
 
     bus.on('bomb_defuse', () => {
       this.hud.showMessage('BOMB DEFUSED', 2000);
+      audio.playRoundEnd(true);
+    });
+
+    // 子弹击中目标/环境
+    bus.on('player_hit', (p: { shooterId: string; victimId: string; damage: number; headshot: boolean; position: [number, number, number] }) => {
+      audio.playHit(p.headshot);
+      // 击中的是玩家自己: 红闪 + 飘字在玩家头上
+      if (p.victimId === LOCAL_PLAYER_ID) {
+        this.hud.flashDamage();
+        this.hitFeedback.spawnDamageNumber(p.position, p.damage, p.headshot);
+      } else if (p.shooterId === LOCAL_PLAYER_ID) {
+        // 玩家打中别人: 屏幕 hit marker + 飘字在受害者位置
+        this.hitFeedback.flashHitMarker(p.headshot);
+        this.hitFeedback.spawnDamageNumber(p.position, p.damage, p.headshot);
+      }
+    });
+
+    // 击中环境: 玩家打的
+    bus.on('bullet_impact', (p: { position: [number, number, number]; weaponId: WeaponId }) => {
+      // 不飘字 (避免污染视野), 但可以加个弹痕特效 - 暂略
     });
 
     // 买枪
@@ -445,24 +482,43 @@ export class Game {
         const w = this.match.players.get(LOCAL_PLAYER_ID)!.weapons;
         this.player.setWeapons(w);
         this.player.setActiveWeaponIndex(w.length - 1);
+        audio.playBuy();
       } else {
         this.hud.showMessage('Not enough money');
       }
     });
 
+    // 武器换弹
+    bus.on('weapon_reload', () => {
+      audio.playReload();
+    });
+
+    // 武器开火
+    bus.on('weapon_fire', (p: { weaponId: WeaponId }) => {
+      audio.playFire(p.weaponId);
+    });
+
     // 玩家死亡
     bus.on('player_died', (p: { id: string }) => {
       if (p.id === LOCAL_PLAYER_ID) {
-        this.exitPointerLock();
-        this.hud.setPointerLocked(false);
-        this.hud.showMessage('You died — click to respawn', 3000);
+        // 不释放 pointer lock! 让玩家死亡后仍可自由浏览视角 (观战模式)
+        // 弹一个半透明死亡提示, 玩家点击 RESPAWN 后再 respawn
+        this.hud.showMessage('You died — click to respawn', 999999);  // 长时间, 直到 click respawn
+        this.hud.setPlayerDead(true);
+        audio.playDeath();
       } else {
         const bot = this.botTargetMap.get(p.id);
         if (bot) {
           bot.state.alive = false;
           bot.bodyGroup.visible = false;
+          bot.healthBar.setVisible(false);
         }
       }
+    });
+
+    // 玩家受伤 (还活着但被击中)
+    bus.on('player_hit_hurt', () => {
+      if (this.player.state.alive) audio.playHurt();
     });
   }
 
@@ -500,6 +556,7 @@ export class Game {
     this.localPlayerHasBomb = true;
 
     // 同步 HUD
+    this.hud.setPlayerDead(false);
     this.hud.showMessage('Respawned', 1500);
   }
 
@@ -598,19 +655,26 @@ export class Game {
 
     // 1) 玩家控制 (需要 pointer lock 才能控制相机, 但移动键在未锁定时也可以响应)
     // 武器开火: 把 input.primaryAttack/secondaryAttack 接到 weapons
-    if (this.input.primaryAttack) this.weapons.startFire();
-    else this.weapons.stopFire();
-    this.weapons.setAiming(!!this.input.secondaryAttack);
+    // 玩家死亡时仍跑 player.update (只更新视角) + 不开火 + 不购买, 让玩家可以自由观战
+    const alive = this.player.state.alive;
+    if (alive) {
+      if (this.input.primaryAttack) this.weapons.startFire();
+      else this.weapons.stopFire();
+      this.weapons.setAiming(!!this.input.secondaryAttack);
+    } else {
+      // 死亡: 强制停止开火, 防止死亡时鼠标还按着导致持续调 startFire
+      this.weapons.stopFire();
+    }
 
     if (this.input.pointerLocked) {
-      if (this.player.state.alive) {
-        this.handleBuyMenuHotkey();
-        this.player.update(dt, this.input, this.map.colliders);
+      this.handleBuyMenuHotkey();
+      this.player.update(dt, this.input, this.map.colliders);
+      if (alive) {
         this.clampPlayerToMap();
         this.weapons.update(dt, this.buildShootContext());
       }
     } else {
-      if (this.player.state.alive) {
+      if (alive) {
         this.handleBuyMenuHotkey();
         this.player.updateWithoutLook(dt, this.input, this.map.colliders);
         this.clampPlayerToMap();
@@ -633,6 +697,18 @@ export class Game {
     this.hud.update();
     this.hud.setPointerLocked(this.input.pointerLocked);
     this.hud.setBuyMenuOpen(this.buyMenu.isOpen);
+
+    // 6) 击中反馈: 飘字 + hit marker
+    this.hitFeedback.update(dt);
+
+    // 7) Bot 血条朝相机 + 距玩家过远时隐藏
+    for (const bot of this.bots) {
+      if (!bot.state.alive) continue;
+      const d = bot.bodyGroup.position.distanceTo(this.player.position);
+      bot.healthBar.setVisible(d < 40);
+      // 让血条 group 永远朝相机 (Billboard 效果)
+      bot.healthBar.group.lookAt(this.camera.position);
+    }
 
     // 最后: 清零本帧的鼠标/滚轮增量 (在所有读 input 的模块都跑完之后)
     this.input.update();

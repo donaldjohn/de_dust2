@@ -9,6 +9,7 @@ import {
 import { bus } from '../utils/events';
 import { clamp, choice, dist2 } from '../utils/util';
 import { Pathfinder } from './Pathfinder';
+import { HealthBar } from './HealthBar';
 
 // Vec3 别名 (用 tuple 表示以便和 PlayerState.position 兼容)
 type Vec3 = THREE.Vector3 | [number, number, number];
@@ -96,6 +97,7 @@ export class Bot {
   // 视觉
   bodyGroup: THREE.Group;
   private _modelRoot: THREE.Group;    // 内部 root, bodyGroup 只是公开入口
+  healthBar: HealthBar;               // 头顶血条 (Bot 自带, Game 调 .setRatio)
 
   // 简易寻路
   private pathfinder: Pathfinder = new Pathfinder();
@@ -178,6 +180,11 @@ export class Bot {
     // 用传入的 model 作为公开 bodyGroup (把子节点加进去)
     model.add(this._modelRoot);
     this.bodyGroup = model;
+
+    // 头顶血条 (挂在 bodyGroup, 跟随移动; Game.update 里让它朝相机)
+    this.healthBar = new HealthBar();
+    this.bodyGroup.add(this.healthBar.group);
+    this.healthBar.setRatio(1.0);
   }
 
   /** 设置难度 */
@@ -739,9 +746,12 @@ export class Bot {
   takeDamage(dmg: number, attackerId: string, hitPos: Vec3): void {
     if (!this.state.alive) return;
     this.state.health -= dmg;
+    // 更新头顶血条
+    this.healthBar.setRatio(Math.max(0, this.state.health) / 100);
     if (this.state.health <= 0) {
       this.state.health = 0;
       this.state.alive = false;
+      this.healthBar.setVisible(false);  // 死了隐藏血条
       // 事件格式与 Game.ts line 400 listener 一致: { killer, victim, hs, weapon }
       bus.emit('player_kill', {
         killer: attackerId,
@@ -759,6 +769,8 @@ export class Bot {
     this.state.health = 100;
     this.state.armor = 0;
     this.state.alive = true;
+    this.healthBar.setRatio(1.0);  // 血条回满
+    this.healthBar.setVisible(true);
     this.aiState = BotState.Idle;
     this.path = [];
     this.targetEnemyId = null;

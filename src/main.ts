@@ -39,6 +39,8 @@ function buildStartMenu() {
     if (!game) game = new Game(canvas);
     // 暴露到 window 以便调试
     (window as any).__game = game;
+    // 第一次用户交互 init 音频 (浏览器策略: AudioContext 必须用户手势后才能 resume)
+    import('./audio/AudioManager').then(({ audio }) => audio.init());
     game.start();
     // 请求 pointer lock
     requestPointerLock();
@@ -80,14 +82,16 @@ document.addEventListener('pointerlockchange', () => {
   }
 });
 
-// 点击 canvas 重新请求 pointer lock (失锁后用户想再玩直接点屏幕即可)
-// 关键: 如果玩家死了, 先复活再 lock, 否则体验是 "点屏幕没反应 -> 卡死"
+// 点击 canvas: 失锁 -> 重新 pointer lock; 玩家死亡中 -> respawn 后继续观战
+// 关键: 死亡后不释放 pointer lock, 玩家点 canvas 触发 respawn 然后继续用鼠标浏览
 canvas.addEventListener('click', () => {
-  if (started && document.pointerLockElement !== canvas) {
+  if (started) {
     if (game && !game.isPlayerAlive) {
       game.respawnLocalPlayer();
     }
-    requestPointerLock();
+    if (document.pointerLockElement !== canvas) {
+      requestPointerLock();
+    }
   }
 });
 

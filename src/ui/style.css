@@ -560,6 +560,19 @@ html, body {
   transition: opacity 0.2s ease;
 }
 .center-message.show { opacity: 1; }
+.center-message.dead {
+  background: rgba(80, 0, 0, 0.75);
+  border: 2px solid rgba(255, 80, 80, 0.6);
+  color: #FFB0B0;
+  font-size: 22px;
+  padding: 14px 32px;
+  top: 38%;
+  animation: deadPulse 1.5s ease-in-out infinite;
+}
+@keyframes deadPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 60, 60, 0.5); }
+  50% { box-shadow: 0 0 24px 4px rgba(255, 60, 60, 0.3); }
+}
 
 /* ============================================================
  * 炸弹相关 (右上角)

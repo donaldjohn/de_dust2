@@ -131,6 +131,7 @@ export class PlayerController {
 
   applyDamage(dmg: number, hitPos?: Vec3, headshot?: boolean): void {
     if (!this.state.alive) return;
+    bus.emit('player_hit_hurt', { id: this.state.id });
     const helmet = headshot ? this.state.helmet : false;
     let final = dmg;
     // 简化版伤害结算:
@@ -180,20 +181,21 @@ export class PlayerController {
   // ---- 帧更新 ----
 
   update(dt: number, input: Input, colliders: AABB[]): void {
-    // 死亡时不更新控制
-    if (!this.state.alive) {
-      this.syncState();
-      return;
-    }
-
     // ---- 1) 视角 (yaw / pitch) ----
+    // 死亡时仍然更新视角, 让玩家可以自由浏览 (上帝视角/观战)
     if (input.pointerLocked) {
       this.yaw -= input.mouseDX * CONFIG.MOUSE_SENSITIVITY;
       this.pitch -= input.mouseDY * CONFIG.MOUSE_SENSITIVITY;
-      // 限制 pitch 范围 ±PI/2 - 留一点点余量避免 look-up / look-down 卡边界
       const limit = Math.PI / 2 - 0.001;
       if (this.pitch > limit) this.pitch = limit;
       if (this.pitch < -limit) this.pitch = -limit;
+    }
+
+    // 死亡时只更新视角, 跳过移动/开火
+    if (!this.state.alive) {
+      this.syncCamera();
+      this.syncState();
+      return;
     }
 
     // ---- 2) 移动方向 (基于 yaw) ----

@@ -434,11 +434,27 @@ export class HUD {
     this.elCenterMsg.classList.add('show');
     if (this.centerMsgTimer !== null) {
       clearTimeout(this.centerMsgTimer);
+      this.centerMsgTimer = null;
     }
+    // duration 用 Infinity 表示永久 (死亡提示用, 直到 setPlayerDead(false))
+    if (duration === Infinity || duration > 100000000) return;
     this.centerMsgTimer = window.setTimeout(() => {
       this.elCenterMsg.classList.remove('show');
       this.centerMsgTimer = null;
     }, duration);
+  }
+
+  /** 玩家死亡状态: 显示半透明遮罩, 锁定死亡提示 */
+  setPlayerDead(dead: boolean): void {
+    if (dead) {
+      this.elCenterMsg.classList.add('show', 'dead');
+    } else {
+      this.elCenterMsg.classList.remove('show', 'dead');
+      if (this.centerMsgTimer !== null) {
+        clearTimeout(this.centerMsgTimer);
+        this.centerMsgTimer = null;
+      }
+    }
   }
 
   showRoundResult(winner: Team, reason: string): void {
