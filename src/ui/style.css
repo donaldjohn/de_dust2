@@ -1,0 +1,904 @@
+/* ============================================================
+ * FPS HUD 样式
+ * 半透明黑色背景, monospace 字体, T 橙 / CT 蓝
+ * ============================================================ */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  color: #fff;
+  font-family: 'Courier New', 'Consolas', monospace;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#app {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#game-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+#hud,
+#menu,
+#crosshair,
+#hitmarker,
+#damage-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ============================================================
+ * 顶部比分板
+ * ============================================================ */
+.hud-scoreboard {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: stretch;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 11;
+}
+
+.hud-scoreboard .team-score {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  min-width: 88px;
+  justify-content: center;
+}
+
+.hud-scoreboard .team-score.t {
+  background: linear-gradient(180deg, rgba(255, 165, 0, 0.25), rgba(255, 165, 0, 0.05));
+  color: #FFA500;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hud-scoreboard .team-score.ct {
+  background: linear-gradient(180deg, rgba(79, 195, 247, 0.25), rgba(79, 195, 247, 0.05));
+  color: #4FC3F7;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hud-scoreboard .team-score .label {
+  font-size: 12px;
+  opacity: 0.75;
+  letter-spacing: 2px;
+}
+
+.hud-scoreboard .team-score .num {
+  font-size: 22px;
+  font-weight: 800;
+  min-width: 22px;
+  text-align: center;
+}
+
+.hud-scoreboard .center {
+  padding: 6px 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  min-width: 180px;
+  line-height: 1.25;
+}
+
+.hud-scoreboard .center .round {
+  font-size: 13px;
+  color: #FFD580;
+  letter-spacing: 1.5px;
+}
+
+.hud-scoreboard .center .timer {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+.hud-scoreboard .center .phase {
+  font-size: 11px;
+  opacity: 0.7;
+  letter-spacing: 3px;
+}
+
+.hud-scoreboard .center .phase.live { color: #FF5252; }
+.hud-scoreboard .center .phase.buy  { color: #FFA500; }
+.hud-scoreboard .center .phase.warmup { color: #B0BEC5; }
+.hud-scoreboard .center .phase.end    { color: #B0BEC5; }
+.hud-scoreboard .center .phase.matchover { color: #FFEB3B; }
+
+/* 顶部左右两边的队伍色条 (装饰) */
+.hud-top-stripe {
+  position: fixed;
+  top: 0;
+  height: 4px;
+  width: 22%;
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0.85;
+}
+.hud-top-stripe.t { left: 0; background: #FFA500; }
+.hud-top-stripe.ct { right: 0; background: #4FC3F7; }
+
+/* ============================================================
+ * 血量 / 装甲 (左下)
+ * ============================================================ */
+.hud-health {
+  position: fixed;
+  left: 24px;
+  bottom: 24px;
+  font-size: 16px;
+  pointer-events: none;
+  z-index: 11;
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  color: #fff;
+}
+
+.hud-health .hp-block {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.hud-health .hp {
+  font-size: 56px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+}
+
+.hud-health .hp.low { color: #FF5252; }
+.hud-health .hp.crit { color: #FF1744; animation: pulse 0.6s infinite; }
+
+.hud-health .plus {
+  font-size: 18px;
+  opacity: 0.8;
+  align-self: center;
+  padding-bottom: 8px;
+}
+
+.hud-health .armor {
+  font-size: 28px;
+  font-weight: 700;
+  color: #4FC3F7;
+  line-height: 1;
+  align-self: center;
+  padding-bottom: 8px;
+}
+
+.hud-health .armor.zero { color: #777; }
+
+.hud-health .helmet {
+  display: inline-block;
+  width: 18px;
+  height: 14px;
+  border: 2px solid #4FC3F7;
+  border-radius: 4px 4px 0 0;
+  position: relative;
+  align-self: center;
+  margin-bottom: 14px;
+}
+.hud-health .helmet::after {
+  content: '';
+  position: absolute;
+  left: -3px; right: -3px;
+  bottom: -4px;
+  height: 3px;
+  background: #4FC3F7;
+  border-radius: 2px;
+}
+.hud-health .helmet.none { border-color: #555; opacity: 0.3; }
+.hud-health .helmet.none::after { background: #555; }
+
+/* ============================================================
+ * 弹药 / 武器 (底部中央)
+ * ============================================================ */
+.hud-ammo {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 16px;
+  text-align: right;
+  pointer-events: none;
+  z-index: 11;
+  color: #fff;
+}
+
+.hud-ammo .weapon-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #FFD580;
+  margin-bottom: 4px;
+  letter-spacing: 1.5px;
+}
+
+.hud-ammo .counts {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 6px;
+  line-height: 1;
+}
+
+.hud-ammo .mag {
+  font-size: 48px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.hud-ammo .mag.reloading { color: #FFA500; }
+.hud-ammo .mag.empty { color: #FF5252; }
+
+.hud-ammo .sep { font-size: 36px; opacity: 0.5; }
+
+.hud-ammo .reserve {
+  font-size: 24px;
+  color: #B0BEC5;
+  font-weight: 600;
+}
+
+.hud-ammo .reload-bar {
+  height: 3px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.1);
+  margin-top: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.hud-ammo .reload-bar > div {
+  height: 100%;
+  background: #FFA500;
+  width: 0%;
+  transition: width 0.05s linear;
+}
+
+/* ============================================================
+ * 钱 / KDA (右下)
+ * ============================================================ */
+.hud-money {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  text-align: right;
+  pointer-events: none;
+  z-index: 11;
+  color: #fff;
+}
+
+.hud-money .amount {
+  font-size: 28px;
+  font-weight: 800;
+  color: #69F0AE;
+  line-height: 1;
+}
+
+.hud-money .kda {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #B0BEC5;
+  letter-spacing: 1px;
+}
+.hud-money .kda .k { color: #69F0AE; }
+.hud-money .kda .d { color: #FF5252; }
+.hud-money .kda .a { color: #FFD580; }
+
+/* ============================================================
+ * 准星 (中央)
+ * ============================================================ */
+#crosshair {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 20;
+  color: #fff;
+  font-size: 4px;       /* 隐藏 + 字符 */
+  line-height: 4px;
+  overflow: visible;
+}
+
+/* 准星 4 条短线 (用伪元素画) */
+#crosshair::before,
+#crosshair::after {
+  content: '';
+  position: absolute;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+
+#crosshair::before {
+  width: 12px; height: 2px;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%) translateX(10px);
+  box-shadow:
+    -22px 0 0 -1px #fff,    /* 右侧 */
+    -10px 0 0 0 transparent;
+}
+#crosshair::after {
+  width: 2px; height: 12px;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%) translateY(10px);
+  box-shadow:
+    0 -22px 0 0 #fff;       /* 上方 */
+}
+
+#crosshair.hit { animation: crosshit 0.18s ease-out; }
+
+@keyframes crosshit {
+  0%   { transform: translate(-50%, -50%) scale(1.0); }
+  40%  { transform: translate(-50%, -50%) scale(1.4); }
+  100% { transform: translate(-50%, -50%) scale(1.0); }
+}
+
+/* ============================================================
+ * 击杀通知 (左上)
+ * ============================================================ */
+.hud-killfeed {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+  z-index: 12;
+  font-size: 14px;
+  max-width: 360px;
+}
+
+.hud-killfeed .kill-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  background: rgba(0, 0, 0, 0.55);
+  border-left: 3px solid #FFA500;
+  border-radius: 2px;
+  color: #fff;
+  animation: killfadeout 0.4s linear 4.6s forwards;
+}
+
+.hud-killfeed .kill-row.ct { border-left-color: #4FC3F7; }
+
+.hud-killfeed .killer { font-weight: 700; }
+.hud-killfeed .killer.t { color: #FFA500; }
+.hud-killfeed .killer.ct { color: #4FC3F7; }
+.hud-killfeed .victim.t { color: #FFA500; }
+.hud-killfeed .victim.ct { color: #4FC3F7; }
+
+.hud-killfeed .weapon-icon {
+  display: inline-block;
+  font-size: 12px;
+  padding: 0 4px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  color: #FFD580;
+  font-weight: 600;
+}
+
+.hud-killfeed .hs {
+  color: #FF1744;
+  font-weight: 800;
+  text-shadow: 0 0 4px rgba(255, 23, 68, 0.7);
+}
+
+@keyframes killfadeout {
+  to { opacity: 0; transform: translateX(-12px); }
+}
+
+/* ============================================================
+ * 计分板 (Tab) - 右上
+ * ============================================================ */
+.hud-tab-board {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 460px;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  padding: 12px 16px;
+  font-size: 13px;
+  pointer-events: none;
+  z-index: 13;
+  display: none;
+}
+
+.hud-tab-board.open { display: block; }
+
+.hud-tab-board h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  letter-spacing: 2px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.hud-tab-board h3.t { color: #FFA500; }
+.hud-tab-board h3.ct { color: #4FC3F7; }
+
+.hud-tab-board table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.hud-tab-board th, .hud-tab-board td {
+  text-align: left;
+  padding: 3px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.hud-tab-board th {
+  color: #888;
+  font-weight: 600;
+  letter-spacing: 1px;
+  font-size: 11px;
+}
+
+.hud-tab-board tr.local td { background: rgba(255, 255, 255, 0.05); font-weight: 700; }
+.hud-tab-board tr.dead td { color: #666; font-style: italic; }
+
+/* ============================================================
+ * 回合结算大横幅 (中央)
+ * ============================================================ */
+.round-banner {
+  position: fixed;
+  top: 38%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  z-index: 25;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.round-banner.show { opacity: 1; }
+
+.round-banner .title {
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+}
+
+.round-banner.t  .title { color: #FFA500; }
+.round-banner.ct .title { color: #4FC3F7; }
+
+.round-banner .reason {
+  font-size: 18px;
+  margin-top: 8px;
+  color: #fff;
+  letter-spacing: 2px;
+  opacity: 0.85;
+}
+
+/* ============================================================
+ * 中央动作状态 (PLANTING / DEFUSING) + 进度条
+ * ============================================================ */
+.action-status {
+  position: fixed;
+  top: 58%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  z-index: 22;
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+  display: none;
+}
+
+.action-status.show { display: block; }
+
+.action-status .label { margin-bottom: 10px; }
+
+.plant-progress {
+  width: 320px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 165, 0, 0.6);
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 0 auto;
+}
+.plant-progress > div {
+  height: 100%;
+  background: #FFA500;
+  width: 0%;
+  transition: width 0.1s linear;
+}
+.plant-progress.defuse > div { background: #4FC3F7; }
+.plant-progress.defuse { border-color: rgba(79, 195, 247, 0.6); }
+
+/* ============================================================
+ * 中央小消息
+ * ============================================================ */
+.center-message {
+  position: fixed;
+  top: 28%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 24px;
+  background: rgba(0, 0, 0, 0.65);
+  border-radius: 4px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  pointer-events: none;
+  z-index: 24;
+  color: #FFD580;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.center-message.show { opacity: 1; }
+
+/* ============================================================
+ * 炸弹相关 (右上角)
+ * ============================================================ */
+.bomb-indicator {
+  position: fixed;
+  top: 72px;
+  right: 16px;
+  pointer-events: none;
+  z-index: 11;
+  font-size: 14px;
+  font-weight: 700;
+  background: rgba(255, 23, 68, 0.85);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 3px;
+  letter-spacing: 1.5px;
+  display: none;
+  animation: bombpulse 1s infinite;
+}
+.bomb-indicator.show { display: block; }
+
+@keyframes bombpulse {
+  0%, 100% { transform: scale(1.0); }
+  50%      { transform: scale(1.05); }
+}
+
+/* ============================================================
+ * 受伤红色 vignette
+ * ============================================================ */
+#damage-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 30;
+  background: radial-gradient(ellipse at center,
+    rgba(255, 0, 0, 0) 50%,
+    rgba(255, 0, 0, 0.55) 100%);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+#damage-vignette.flash {
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+#damage-vignette.solid { opacity: 1; }
+
+/* ============================================================
+ * 击杀标记 (中心短暂 +)
+ * ============================================================ */
+#hitmarker {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 24px;
+  height: 24px;
+  transform: translate(-50%, -50%) scale(0);
+  pointer-events: none;
+  z-index: 21;
+}
+
+#hitmarker.show {
+  animation: hitmarkerpop 0.25s ease-out;
+}
+
+@keyframes hitmarkerpop {
+  0%   { transform: translate(-50%, -50%) scale(0);   opacity: 0; }
+  40%  { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0; }
+}
+
+#hitmarker::before,
+#hitmarker::after {
+  content: '';
+  position: absolute;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.8);
+}
+#hitmarker::before {
+  width: 14px; height: 2px;
+  top: 11px; left: 5px;
+  transform: rotate(45deg);
+}
+#hitmarker::after {
+  width: 14px; height: 2px;
+  top: 11px; left: 5px;
+  transform: rotate(-45deg);
+}
+
+/* ============================================================
+ * 买枪菜单 (中央弹窗, 唯一 pointer-events: auto 的元素)
+ * ============================================================ */
+.buy-menu {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(255, 165, 0, 0.5);
+  border-radius: 6px;
+  padding: 18px 22px;
+  min-width: 520px;
+  display: none;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+}
+
+.buy-menu.open { display: block; }
+
+.buy-menu h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+  letter-spacing: 2px;
+  color: #FFD580;
+}
+
+.buy-menu .hint {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 14px;
+  letter-spacing: 1px;
+}
+
+.buy-menu .grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.buy-menu .item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 14px;
+  letter-spacing: 1px;
+  transition: background 0.1s ease, border-color 0.1s ease;
+}
+
+.buy-menu .item:hover {
+  background: rgba(255, 165, 0, 0.15);
+  border-color: #FFA500;
+}
+
+.buy-menu .item.owned {
+  border-color: #69F0AE;
+  color: #B0BEC5;
+}
+.buy-menu .item.owned:hover {
+  background: rgba(105, 240, 174, 0.1);
+  border-color: #69F0AE;
+}
+
+.buy-menu .item.cant-afford {
+  opacity: 0.45;
+  color: #FF5252;
+  cursor: not-allowed;
+}
+.buy-menu .item.cant-afford:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.buy-menu .item .name {
+  font-weight: 700;
+}
+
+.buy-menu .item .price {
+  font-weight: 800;
+  color: #69F0AE;
+}
+.buy-menu .item.cant-afford .price { color: #FF5252; }
+.buy-menu .item.owned .price {
+  color: #69F0AE;
+}
+
+.buy-menu .item .check {
+  color: #69F0AE;
+  font-weight: 800;
+  margin-left: 6px;
+}
+
+.buy-menu .footer {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #888;
+  letter-spacing: 1.5px;
+}
+.buy-menu .footer .money { color: #69F0AE; font-weight: 700; }
+
+/* ============================================================
+ * 玩家没开 pointer lock 时显示的提示
+ * ============================================================ */
+.click-to-play {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 100;
+  pointer-events: none;
+  color: #fff;
+  font-size: 22px;
+  letter-spacing: 2px;
+  font-weight: 700;
+}
+.click-to-play.show { display: flex; }
+
+/* ============================================================
+ * Main Menu (Start Screen)
+ * ============================================================ */
+#menu {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(40,28,15,0.92) 0%, rgba(80,55,30,0.95) 100%);
+  z-index: 9999;
+  pointer-events: auto;
+  font-family: 'Courier New', 'Consolas', monospace;
+}
+
+.main-menu {
+  max-width: 640px;
+  width: 90%;
+  padding: 32px 40px;
+  background: rgba(0,0,0,0.55);
+  border: 2px solid #C2A26B;
+  border-radius: 6px;
+  text-align: center;
+  color: #fff;
+  box-shadow: 0 0 60px rgba(0,0,0,0.6), inset 0 0 30px rgba(194,162,107,0.15);
+}
+
+.main-menu .title {
+  font-size: 56px;
+  font-weight: 900;
+  letter-spacing: 8px;
+  color: #FFA500;
+  margin: 0 0 8px 0;
+  text-shadow: 0 0 20px rgba(255,165,0,0.6), 4px 4px 0 #5A3300;
+}
+
+.main-menu .subtitle {
+  font-size: 14px;
+  color: #C2A26B;
+  letter-spacing: 4px;
+  margin: 0 0 32px 0;
+  text-transform: uppercase;
+}
+
+.main-menu .play-btn {
+  background: linear-gradient(180deg, #FFA500 0%, #C27000 100%);
+  color: #1A0E00;
+  border: 2px solid #FFD180;
+  border-radius: 4px;
+  padding: 16px 48px;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  cursor: pointer;
+  font-family: inherit;
+  text-transform: uppercase;
+  transition: transform 0.1s, box-shadow 0.1s;
+  box-shadow: 0 4px 0 #5A3300, 0 0 30px rgba(255,165,0,0.4);
+}
+
+.main-menu .play-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #5A3300, 0 0 40px rgba(255,165,0,0.6);
+}
+
+.main-menu .play-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #5A3300, 0 0 20px rgba(255,165,0,0.3);
+}
+
+.main-menu .controls {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(194,162,107,0.3);
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #DDD;
+}
+
+.main-menu .controls h3 {
+  color: #FFA500;
+  margin: 16px 0 8px 0;
+  font-size: 14px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.main-menu .controls p { margin: 2px 0; }
+.main-menu .controls b { color: #FFE0B0; }
+
+.main-menu .t-color { color: #FFA500; font-weight: 700; }
+.main-menu .ct-color { color: #4FC3F7; font-weight: 700; }
+
+/* ============================================================
+ * Damage Vignette (existing in #damage-vignette)
+ * ============================================================ */
+#damage-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(255, 0, 0, 0.7) 100%);
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+}
+#damage-vignette.flash { opacity: 1; transition: opacity 0.05s ease-in; }
+#damage-vignette.flash.fade { opacity: 0; transition: opacity 0.5s ease-out; }
+
