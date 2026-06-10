@@ -81,8 +81,12 @@ document.addEventListener('pointerlockchange', () => {
 });
 
 // 点击 canvas 重新请求 pointer lock (失锁后用户想再玩直接点屏幕即可)
+// 关键: 如果玩家死了, 先复活再 lock, 否则体验是 "点屏幕没反应 -> 卡死"
 canvas.addEventListener('click', () => {
   if (started && document.pointerLockElement !== canvas) {
+    if (game && !game.isPlayerAlive) {
+      game.respawnLocalPlayer();
+    }
     requestPointerLock();
   }
 });

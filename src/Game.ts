@@ -46,6 +46,9 @@ export class Game {
   private sky!: Sky;
   private input!: Input;
   private player!: PlayerController;
+
+  /** 玩家是否还活着 (供 main.ts 决定点击时是否 respawn) */
+  get isPlayerAlive(): boolean { return this.player.state.alive; }
   private weapons!: WeaponSystem;
   private match!: Match;
   private hud!: HUD;
@@ -471,6 +474,33 @@ export class Game {
   private startMatch() {
     this.match.start();
     this.hud.bind(this.player.state, this.buildMatchInfo());
+  }
+
+  /**
+   * 玩家死亡后, 点击 canvas 重新 spawn 到 T 出生点.
+   * 这是修复 "血 0+0 之后感觉卡住" 的关键: 之前死了之后没有任何复活逻辑,
+   * 用户看着 HUD 上 "click to respawn" 但点了没反应 -> 体验是 "卡死".
+   */
+  respawnLocalPlayer(): void {
+    if (this.player.state.alive) return;
+    const tSpawns = this.map.spawns.filter(s => s.team === Team.T);
+    const sp = tSpawns[0];
+    if (!sp) return;
+
+    // 复活到 T spawn
+    this.player.respawn(sp.position, sp.facing);
+    this.player.state.weapons = this.match.players.get(LOCAL_PLAYER_ID)!.weapons;
+    this.player.setActiveWeaponIndex(this.player.state.weapons.length > 1 ? 1 : 0);
+    this.weapons.init(this.player.state.weapons);
+    if (this.player.state.activeWeaponIndex >= 0 &&
+        this.player.state.activeWeaponIndex < this.weapons.weapons.length) {
+      this.weapons.activeIndex = this.player.state.activeWeaponIndex;
+    }
+    // 复活时玩家重新有炸弹 (T 的本地玩家)
+    this.localPlayerHasBomb = true;
+
+    // 同步 HUD
+    this.hud.showMessage('Respawned', 1500);
   }
 
   private buildMatchInfo(): MatchInfo {
