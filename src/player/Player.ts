@@ -47,9 +47,9 @@ export class PlayerController {
   // 内部
   private id: string;
   private team: Team;
-  private radius: number;
-  private height: number;
-  private isDead: boolean = false;  // 死亡后仍走 update (上帝模式 / 自由观战)
+  readonly radius: number;
+  readonly height: number;
+  isDead: boolean = false;  // 死亡后仍走 update (上帝模式 / 自由观战), public 让 Game 知道
   private readonly tmpForward = new THREE.Vector3();
   private readonly tmpRight = new THREE.Vector3();
   private readonly tmpMove = new THREE.Vector3();

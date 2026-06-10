@@ -125,19 +125,23 @@ export class Collision {
       if (!this.capsuleIntersectsAABB(pos, radius, height, c)) continue;
 
       // 候选: 沿 axis 推到"刚好在 collider 外"
+      // 关键: 玩家朝 +X 走 (positive=true) 撞箱子, 应该被推回到箱子**前面** (c.min[0] - radius),
+      //       这样玩家留在箱子外面 (左侧), 而不是被推到箱子另一侧.
+      //       朝 -X 走则推到 c.max[0] + radius (箱子右侧).
+      // 之前这里是反的, 导致玩家被推穿到箱子另一边, 看起来像"穿墙".
       let newVal: number;
       if (axis === 'y') {
         if (positive) {
-          // 向上运动 -> 撞到顶面
+          // 向上运动 -> 撞到顶面 (玩家头顶贴箱子底, 脚在 c.max[1] - height)
           newVal = c.max[1] - height;
         } else {
-          // 向下运动 -> 撞到底面 (脚)
+          // 向下运动 -> 撞到底面 (玩家脚贴箱子顶)
           newVal = c.min[1];
         }
       } else if (axis === 'x') {
-        newVal = positive ? c.max[0] + radius : c.min[0] - radius;
+        newVal = positive ? c.min[0] - radius : c.max[0] + radius;
       } else {
-        newVal = positive ? c.max[2] + radius : c.min[2] - radius;
+        newVal = positive ? c.min[2] - radius : c.max[2] + radius;
       }
 
       // 选"位移代价最小"的那个 (玩家推得越少越对)

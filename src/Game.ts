@@ -31,6 +31,7 @@ import { Bot, BotWorld, BotState } from './gameplay/Bot';
 // UI
 import { HUD, MatchInfo } from './ui/HUD';
 import { BuyMenu } from './ui/BuyMenu';
+import { Minimap } from './ui/Minimap';
 
 const LOCAL_PLAYER_ID = 'player-local';
 
@@ -56,6 +57,7 @@ export class Game {
   private match!: Match;
   private hud!: HUD;
   private buyMenu!: BuyMenu;
+  private minimap!: Minimap;
 
   // Bots
   private bots: Bot[] = [];
@@ -141,6 +143,9 @@ export class Game {
     // 4) HUD + 买枪
     this.hud = new HUD(document.getElementById('hud')!);
     this.buyMenu = new BuyMenu(document.getElementById('menu')!);
+
+    // 小地图 (右上角雷达)
+    this.minimap = new Minimap(document.body, this.map);
     this.buyMenu.onBuy = (id) => {
       if (!this.localPlayerHasBomb) {
         // CT 或 T 未持弹: 走买枪逻辑
@@ -715,6 +720,25 @@ export class Game {
     // 6) 击中反馈: 飘字 + hit marker
     this.hitFeedback.update(dt);
 
+    // 6.4) 玩家不能走进 Bot 身体 (圆-圆 XZ 平面阻挡, 死亡后走 noclip 跳过)
+    if (this.player.state.alive && !this.player.isDead) {
+      this.resolvePlayerVsBots();
+    }
+
+    // 6.5) 小地图渲染 (右上角雷达)
+    this.minimap.render(
+      {
+        x: this.player.position.x, z: this.player.position.z,
+        yaw: this.player.yaw, alive: this.player.state.alive,
+        team: this.player.state.team
+      },
+      this.bots.map(b => ({
+        id: b.state.id, team: b.state.team,
+        x: b.bodyGroup.position.x, z: b.bodyGroup.position.z,
+        alive: b.state.alive
+      }))
+    );
+
     // 7) Bot 血条朝相机 + 距玩家过远时隐藏
     for (const bot of this.bots) {
       if (!bot.state.alive) continue;
@@ -1053,6 +1077,51 @@ export class Game {
     if (p.x > this.MAP_BOUND) p.x = this.MAP_BOUND;
     if (p.z < -this.MAP_BOUND) p.z = -this.MAP_BOUND;
     if (p.z > this.MAP_BOUND) p.z = this.MAP_BOUND;
+  }
+
+  /**
+   * 玩家 vs Bot 阻挡: 玩家不能走进 bot 身体 (圆-圆 XZ 平面).
+   * bot 死后 bodyGroup 在原位 (尸体), 仍然阻挡, 视觉合理.
+   * 调用前已保证玩家 alive 且没在 noclip 模式.
+   */
+  private resolvePlayerVsBots() {
+    const pp = this.player.position;
+    const pr = this.player.radius;        // 玩家半径 (0.4)
+    const botR = 0.5;                     // bot 身体实际更宽 (模型 0.55), 取 0.5 让阻挡明显
+    const minDist = pr + botR;            // 两圆不相交的最小中心距
+    const minDist2 = minDist * minDist;
+    // 多次迭代防止 Bot 之间相互推挤 / 玩家被同时推
+    for (let pass = 0; pass < 3; pass++) {
+      let moved = false;
+      for (const bot of this.bots) {
+        // 跳过: 死了 invisible 但尸体仍挡 (玩家看到尸体不会想穿过去)
+        // 但玩家死了的 bot (invisible 之前) 不挡 (避免尸体堆)
+        // 简化: 只看 alive
+        if (!bot.state.alive) continue;
+        const bp = bot.bodyGroup.position;
+        const dx = pp.x - bp.x;
+        const dz = pp.z - bp.z;
+        const d2 = dx * dx + dz * dz;
+        if (d2 >= minDist2) continue;
+        // 重叠: 沿连线把玩家推开
+        let d = Math.sqrt(d2);
+        if (d < 0.0001) {
+          // 玩家和 bot 完全重合 (罕见): 随机推开
+          const ang = Math.random() * Math.PI * 2;
+          pp.x = bp.x + Math.cos(ang) * minDist;
+          pp.z = bp.z + Math.sin(ang) * minDist;
+          moved = true;
+          continue;
+        }
+        const overlap = minDist - d;
+        const nx = dx / d;
+        const nz = dz / d;
+        pp.x += nx * overlap;
+        pp.z += nz * overlap;
+        moved = true;
+      }
+      if (!moved) break;
+    }
   }
 
   private canSee(from: { x: number; y: number; z: number } | [number, number, number], to: { x: number; y: number; z: number } | [number, number, number]): boolean {
